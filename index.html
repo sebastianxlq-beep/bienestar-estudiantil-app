@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bienestar estudiantil – Estados de cuenta</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#14604a">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<style>
+:root{--bg:#f2f5f4;--sf:#fff;--tx:#14231f;--mu:#5d6d67;--bd:#d8e0dd;--ac:#14604a;--ac2:#dff0ea;--wr:#a8431a;--wr2:#fbe9e0;--ok:#14604a;--ok2:#dff0ea;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1816;--sf:#18241f;--tx:#e6efec;--mu:#93a59e;--bd:#2c3d37;--ac:#4cc29c;--ac2:#1d3a31;--wr:#f0956a;--wr2:#3a231a;--ok:#4cc29c;--ok2:#1d3a31;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1816;--sf:#18241f;--tx:#e6efec;--mu:#93a59e;--bd:#2c3d37;--ac:#4cc29c;--ac2:#1d3a31;--wr:#f0956a;--wr2:#3a231a;--ok:#4cc29c;--ok2:#1d3a31;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+main{max-width:1060px;margin:0 auto;padding:18px 16px 48px}
+h1{font:600 26px/1.2 Georgia,"Times New Roman",serif;margin:0 0 4px}
+.sub{color:var(--mu);margin:0 0 14px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+button,.btn,select,input{font:inherit;color:var(--tx)}
+button,.btn{background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:8px 13px;cursor:pointer;display:inline-block}
+button:hover,.btn:hover{border-color:var(--ac)}
+button.p,.btn.p{background:var(--ac);border-color:var(--ac);color:var(--bg)}
+button.d{color:var(--wr)}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+input,select,textarea{background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;width:100%}
+textarea{font:inherit;color:var(--tx);min-height:300px;resize:vertical}
+.sp{flex:1}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+.sum div{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 14px}
+.sum b{display:block;font-size:20px}.sum span{color:var(--mu);font-size:13px}
+.tw{overflow-x:auto;background:var(--sf);border:1px solid var(--bd);border-radius:10px}
+table{width:100%;border-collapse:collapse;min-width:620px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--bd);white-space:nowrap}
+th{color:var(--mu);font-weight:600;font-size:13px}
+tr:last-child td{border-bottom:0}
+tbody tr{cursor:pointer}tbody tr:hover{background:var(--ac2)}
+.r{text-align:right}
+.tag{border-radius:99px;padding:2px 10px;font-size:12px;font-weight:600}
+.tag.pa{background:var(--ok2);color:var(--ok)}.tag.pe{background:var(--wr2);color:var(--wr)}.tag.sc{background:var(--bd);color:var(--mu)}
+.empty{padding:34px 16px;text-align:center;color:var(--mu);white-space:normal}
+dialog{border:1px solid var(--bd);border-radius:14px;background:var(--bg);color:var(--tx);width:min(660px,94vw);max-height:90vh;padding:18px}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+@media(max-width:560px){.g2,.g3{grid-template-columns:1fr}}
+label{display:block;font-size:13px;color:var(--mu);margin:8px 0 3px}
+.box{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:12px;margin:12px 0}
+h3{margin:0 0 6px;font-size:15px}h2{margin:0;font:600 20px Georgia,serif}
+.note{font-size:13px;color:var(--mu);margin:10px 0 0}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px}
+.tab{white-space:nowrap}
+.tab.on{background:var(--ac);border-color:var(--ac);color:var(--bg)}
+.tabs.s .tab{padding:5px 12px;font-size:14px;border-radius:99px}
+.tab small{opacity:.75}
+.lgw{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:22px;width:min(420px,100%)}
+.seg{display:flex;gap:6px;margin:10px 0}.seg button{flex:1}.seg .on{background:var(--ac2);border-color:var(--ac);font-weight:600}
+.msg{color:var(--wr);min-height:20px;margin:8px 0;font-size:14px}
+.hp tbody tr{cursor:default}.hp tbody tr:hover{background:none}
+summary{cursor:pointer}
+.gc{margin-bottom:10px}
+.gh{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;padding:16px 18px;font-size:17px;border-radius:12px}
+.gh.on{background:var(--ac2);border-color:var(--ac)}
+.gm{color:var(--mu);font-size:13px}
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0 4px;padding-left:10px}
+.sc2{display:flex;flex-direction:column;gap:2px;text-align:left;padding:12px 14px;font-size:17px}
+.sc2 small{color:var(--mu);font-size:13px}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:9px 16px;border-radius:8px;display:none;z-index:50}
+</style>
+</head>
+<body>
+
+<div id="lg" class="lgw"><div class="card">
+  <h1>Bienestar estudiantil</h1>
+  <p class="sub">Estados de cuenta de los estudiantes</p>
+  <div class="seg" id="mt"><button data-m="in" class="on">Entrar</button><button data-m="up">Crear cuenta</button></div>
+  <div class="seg" id="rl"><button data-r="profe" class="on">Profe guía</button><button data-r="admin">Administrador</button></div>
+  <label for="lc">Cédula de identidad (es su usuario)</label>
+  <input id="lc" inputmode="numeric" autocomplete="username" placeholder="Solo números, sin guiones">
+  <label for="lp">Contraseña</label>
+  <input id="lp" type="password" autocomplete="current-password" placeholder="Mínimo 6 caracteres">
+  <div id="up" hidden>
+    <label for="lp2">Repita la contraseña</label><input id="lp2" type="password" autocomplete="new-password">
+    <div id="pf" class="g2"><div><label for="lgr">Grado que guía</label><select id="lgr"></select></div><div><label for="lse">Sección</label><select id="lse"></select></div></div>
+  </div>
+  <p class="note" id="ap" hidden>Las cuentas de profe guía las aprueba un administrador antes de poder entrar.</p>
+  <p class="msg" id="lm" role="alert"></p>
+  <button class="p" id="go" style="width:100%">Entrar</button>
+  <p class="note" id="lst">Conectando con el servidor…</p>
+</div></div>
+
+<main id="app" hidden>
+  <div class="bar"><div><h1>Estados de cuenta</h1><div class="sub" id="who" style="margin:0"></div></div><span class="sp"></span><button id="out">Salir</button></div>
+  <p class="note" id="st" style="margin:0 0 12px">Todo lo que anote se guarda en línea de inmediato.</p>
+
+  <div class="bar">
+    <button class="p" id="add">+ Agregar un estudiante</button>
+    <button id="exp">Descargar Excel actualizado</button>
+    <label class="btn p" style="margin:0">Subir Excel con todos los estudiantes<input id="file" type="file" accept=".xlsx,.xls,.csv" hidden></label>
+    <button id="tpl">Descargar plantilla Excel</button>
+    <button class="adm" id="usr">Usuarios</button>
+    <button class="adm d" id="yr">Nuevo año</button>
+  </div>
+
+  <details class="box" id="ayuda" style="margin-top:0"><summary><b>¿Dónde pongo los datos en el Excel?</b></summary>
+  <p class="sub" style="margin:8px 0">Un estudiante por fila, desde la fila 2 (la fila 1 son los títulos). Descargue “Plantilla Excel” para tenerlo listo.</p>
+  <div class="tw hp"><table><thead><tr><th>Columna</th><th>Qué escribir</th><th>Ejemplo</th></tr></thead><tbody>
+  <tr><td><b>A</b></td><td>Nombre del estudiante (obligatorio)</td><td>Ana Pérez Rojas</td></tr>
+  <tr><td><b>B</b></td><td>Cédula del estudiante (obligatorio)</td><td>123456789</td></tr>
+  <tr><td><b>C</b></td><td>Grado, número del 7 al 12 (obligatorio)</td><td>7</td></tr>
+  <tr><td><b>D</b></td><td>Sección, grado-número (obligatorio)</td><td>7-1</td></tr>
+  <tr><td><b>E</b></td><td>Nombre del encargado (obligatorio)</td><td>María Rojas Vargas</td></tr>
+  <tr><td><b>F</b></td><td>Correo del encargado (obligatorio)</td><td>maria.rojas@correo.com</td></tr>
+  <tr><td><b>G</b></td><td>Teléfono (opcional)</td><td>8888-0000</td></tr>
+  <tr><td><b>H</b></td><td>Monto adeudado en colones, solo el número (opcional)</td><td>45000</td></tr>
+  <tr><td><b>I</b></td><td>Concepto (opcional)</td><td>Matrícula</td></tr>
+  </tbody></table></div></details>
+
+  <div id="home"></div>
+  <div id="secv" hidden>
+  <div class="bar"><button id="bk">← Volver a los grados</button><h2 id="stt"></h2></div>
+  <div class="sum" id="sum"></div>
+  <div class="bar">
+    <div style="flex:1;min-width:200px"><input id="q" placeholder="Buscar por nombre, cédula o encargado" aria-label="Buscar"></div>
+    <div><select id="fl" aria-label="Filtrar"><option value="">Todos</option><option value="pe">Con saldo pendiente</option><option value="pa">Al día</option></select></div>
+  </div>
+  <div class="tw"><table>
+  <thead><tr><th>Estudiante</th><th>Cédula</th><th>Encargado</th><th class="r">Total a pagar</th><th class="r">Total abonado</th><th class="r">Saldo</th><th>Estado de cuenta</th></tr></thead>
+  <tbody id="rows"></tbody></table></div>
+  </div>
+  <p class="note">Al registrar un abono, el sistema envía solo el correo de confirmación al encargado. Los montos están en colones costarricenses (₡).</p>
+</main>
+
+<dialog id="dt"></dialog>
+<dialog id="em"></dialog>
+<div id="toast" role="status"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+const uid=()=>Math.random().toString(36).slice(2,9)+Math.random().toString(36).slice(2,5);
+const hoy=()=>new Date().toISOString().slice(0,10);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=n=>'₡'+Number(n).toLocaleString('es-CR',{maximumFractionDigits:2});
+const GN={7:'Sétimo',8:'Octavo',9:'Noveno',10:'Décimo',11:'Undécimo',12:'Duodécimo'};
+const GR=[7,8,9,10,11,12];
+const gOpt=(s)=>GR.map(g=>`<option value="${g}"${g==s?' selected':''}>${GN[g]} (${g})</option>`).join('');
+const sOpt=(g,s)=>[1,2,3,4].map(n=>`<option value="${n}"${n==s?' selected':''}>${g}-${n}</option>`).join('');
+const tot=e=>{let c=0,p=0;e.movs.forEach(m=>m.tipo==='cargo'?c+=m.monto:p+=m.monto);return{c,p,s:c-p}};
+const est=e=>{const t=tot(e);return t.c===0?'sc':(t.s>0.004?'pe':'pa')};
+const lbl={pe:'Pendiente',pa:'Al día',sc:'Sin cargos'};
+const estTxt=e=>{const s=est(e);return s==='pe'?'Pendiente: '+fmt(tot(e).s):lbl[s]};
+function num(s){s=String(s).replace(/[^\d.,\-]/g,'');if(/^-?\d{1,3}([.,]\d{3})+$/.test(s))s=s.replace(/[.,]/g,'');else s=s.replace(',','.');return parseFloat(s)||0}
+function toast(t){const x=$('#toast');x.textContent=t;x.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>x.style.display='none',3500)}
+
+let S={est:[]},U=null,G=7,SE=0,coll=null,ucoll=null,sub=null,last={},busy=false,again=false;
+const strip=e=>({nombre:e.nombre,cedula:e.cedula,encargado:e.encargado,grado:e.grado,seccion:e.seccion,correo:e.correo,telefono:e.telefono,movs:e.movs});
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const cp=(e,x)=>{e.nombre=x.nombre||'';e.grado=+x.grado||7;e.seccion=+x.seccion||1;e.cedula=x.cedula||'';e.encargado=x.encargado||'';e.correo=x.correo||'';e.telefono=x.telefono||'';e.movs=(x.movs||[]).map(m=>({...m}));return e};
+const sortS=()=>S.est.sort((a,b)=>a.grado-b.grado||a.seccion-b.seccion||a.nombre.localeCompare(b.nombre,'es'));
+
+function save(){
+  if(!coll)return;
+  if(busy){again=true;return}
+  busy=true;
+  (async()=>{
+    let rejected=false;
+    do{again=false;
+      const ids=new Set(S.est.map(e=>e.id)),jobs=[];
+      S.est.forEach(e=>{const j=JSON.stringify(strip(e));if(last[e.id]!==j)jobs.push([e.id,j,()=>coll.doc(e.id).set(JSON.parse(j))])});
+      Object.keys(last).forEach(id=>{if(!ids.has(id))jobs.push([id,null,()=>coll.doc(id).delete()])});
+      for(const [id,j,fn] of jobs){
+        let done=false;
+        for(let i=0;i<4&&!done;i++){
+          try{await fn();if(j===null)delete last[id];else last[id]=j;done=true}
+          catch(er){
+            if(er&&er.status===401){busy=false;toast('Su sesión venció. Inicie sesión de nuevo.');salir();return}
+            if(er&&er.status>=400&&er.status<500){toast(er.message||'No se pudo guardar');rejected=true;break}
+            await wait(1500);
+          }
+        }
+        if(!done&&!rejected)toast('No se pudo guardar. Revise su conexión a internet.');
+      }
+    }while(again);
+    busy=false;
+    if(rejected)try{await refresh(true)}catch(e){}
+  })();
+}
+function onSnap(sn,force){
+  const seen=new Set();
+  sn.docs.forEach(d=>{
+    const id=d.id,x=d.data()||{};seen.add(id);
+    const ex=S.est.find(y=>y.id===id);
+    if(ex){if(force||last[id]===undefined||JSON.stringify(strip(ex))===last[id]){cp(ex,x);last[id]=JSON.stringify(strip(ex))}}
+    else if(force||!(id in last)){const e=cp({id},x);S.est.push(e);last[id]=JSON.stringify(strip(e))}
+  });
+  if(force){S.est=S.est.filter(e=>seen.has(e.id));Object.keys(last).forEach(id=>{if(!seen.has(id))delete last[id]})}
+  else Object.keys(last).forEach(id=>{if(seen.has(id))return;const i=S.est.findIndex(y=>y.id===id);if(i>=0&&JSON.stringify(strip(S.est[i]))===last[id]){S.est.splice(i,1);delete last[id]}});
+  sortS();
+}
+async function refresh(force){
+  const r=await API('GET','/students');
+  onSnap({docs:r.students.map(s=>({id:s.id,data:()=>s}))},force);
+  render();
+}
+async function bajar(wb,name){
+  try{XLSX.writeFile(wb,name)}catch(e){toast('No se pudo descargar el archivo')}
+}
+
+/* ---------- Acceso ---------- */
+let mode='in',rol='profe',CFG={};
+async function API(m,u,b){
+  const r=await fetch('/api'+u,{method:m,headers:b?{'Content-Type':'application/json'}:{},body:b?JSON.stringify(b):undefined,credentials:'same-origin'});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){const e=new Error(j.error||'No se pudo completar la acción');e.status=r.status;throw e}
+  return j;
+}
+const mailToast=x=>toast(x.sent?'Correo enviado automáticamente a '+x.to:'No se pudo enviar el correo a '+x.to+': '+(x.error||'error desconocido'));
+const msg=(t,ok)=>{const m=$('#lm');m.textContent=t||'';m.style.color=ok?'var(--ok)':''};
+function lgView(){
+  document.querySelectorAll('#mt button').forEach(b=>b.classList.toggle('on',b.dataset.m===mode));
+  document.querySelectorAll('#rl button').forEach(b=>b.classList.toggle('on',b.dataset.r===rol));
+  $('#up').hidden=mode==='in';$('#pf').hidden=mode==='in'||rol==='admin';
+  $('#ap').hidden=!(mode==='up'&&rol==='profe');
+  $('#go').textContent=mode==='in'?'Entrar':'Crear cuenta';$('#lp').autocomplete=mode==='in'?'current-password':'new-password';msg('');
+}
+$('#mt').onclick=e=>{const b=e.target.closest('button');if(b){mode=b.dataset.m;lgView()}};
+$('#rl').onclick=e=>{const b=e.target.closest('button');if(b){rol=b.dataset.r;lgView()}};
+$('#lgr').innerHTML=gOpt(7);
+const fillSe=()=>{$('#lse').innerHTML=sOpt($('#lgr').value,1)};fillSe();$('#lgr').onchange=fillSe;
+$('#go').onclick=async()=>{
+  const ced=$('#lc').value.replace(/\D/g,''),pw=$('#lp').value;
+  if(!/^\d{9,12}$/.test(ced))return msg('Escriba su cédula con solo números (de 9 a 12 dígitos).');
+  if(pw.length<6)return msg('La contraseña debe tener al menos 6 caracteres.');
+  if(mode==='up'&&pw!==$('#lp2').value)return msg('Las contraseñas no coinciden.');
+  $('#go').disabled=true;
+  try{
+    const r=mode==='in'?await API('POST','/login',{cedula:ced,password:pw,rol}):await API('POST','/register',{cedula:ced,password:pw,rol,grado:+$('#lgr').value,seccion:+$('#lse').value});
+    if(r.pendiente){mode='in';lgView();$('#lp').value=$('#lp2').value='';msg('Cuenta creada. Un administrador debe aprobarla antes de que pueda entrar.',true);return}
+    enter(r.user);
+  }catch(e){msg(e.message||'No se pudo completar. Revise su conexión a internet.')}
+  finally{$('#go').disabled=false}
+};
+[$('#lc'),$('#lp'),$('#lp2')].forEach(i=>i.onkeydown=e=>{if(e.key==='Enter')$('#go').click()});
+function enter(u){
+  U=u;$('#lp').value=$('#lp2').value='';
+  $('#lg').hidden=true;$('#app').hidden=false;
+  $('#st').textContent=CFG.correoAutomatico?'Los avisos de pago se envían automáticamente al correo del encargado.':'Atención: el correo automático no está configurado en el servidor; los avisos de pago no se enviarán.';
+  if(u.rol==='profe'){G=u.grado;SE=u.seccion}else{G=7;SE=0}
+  view='home';open=0;
+  refresh(true).catch(()=>toast('No se pudieron cargar los estudiantes'));
+  if(!sub)sub=setInterval(()=>{if(!busy&&!document.querySelector('dialog[open]'))refresh(false).catch(e=>{if(e.status===401)salir()})},10000);
+  render();
+}
+function salir(){
+  API('POST','/logout',{}).catch(()=>{});
+  clearInterval(sub);sub=null;S.est=[];last={};U=null;
+  document.querySelectorAll('dialog[open]').forEach(d=>d.close());
+  $('#app').hidden=true;$('#lg').hidden=false;lgView();
+}
+$('#out').onclick=salir;
+async function initDb(){
+  try{CFG=await API('GET','/config')}catch(e){$('#lst').textContent='No hay conexión con el servidor.';return}
+  coll={doc:id=>({
+    set:async d=>{const r=await API('PUT','/students/'+id,d);(r.emails||[]).forEach(mailToast)},
+    delete:()=>API('DELETE','/students/'+id)
+  })};
+  $('#lst').textContent=CFG.hayAdmin?'':'Primera vez: elija “Administrador”, vaya a “Crear cuenta” y cree la cuenta principal.';
+  try{const r=await API('GET','/me');CFG.correoAutomatico=r.correoAutomatico;enter(r.user)}catch(e){}
+}
+
+/* ---------- Vista ---------- */
+const adm=()=>U&&U.rol==='admin';
+const vis=()=>S.est.filter(e=>adm()||(e.grado===U.grado&&e.seccion===U.seccion));
+function render(){
+  if(!U)return;
+  $('#who').textContent=adm()?'Administrador – cédula '+U.id:'Profe guía de '+U.grado+'-'+U.seccion+' – cédula '+U.id;
+  document.querySelectorAll('.adm').forEach(x=>x.hidden=!adm()||view!=='home');
+  $('#ayuda').hidden=view!=='home';$('#home').hidden=view==='sec';$('#secv').hidden=view!=='sec';
+  if(view!=='sec'){homeView();return}
+  const v=vis();
+  $('#stt').textContent='Sección '+G+'-'+SE+' ('+GN[G]+')';
+  const base=v.filter(e=>e.grado===G&&(!SE||e.seccion===SE));
+  let pend=0,cob=0,np=0;base.forEach(e=>{const t=tot(e);cob+=t.p;if(t.s>0.004){pend+=t.s;np++}});
+  $('#sum').innerHTML=`<div><b>${base.length}</b><span>Estudiantes</span></div><div><b>${np}</b><span>Con saldo pendiente</span></div><div><b>${fmt(pend)}</b><span>Por cobrar</span></div><div><b>${fmt(cob)}</b><span>Cobrado</span></div>`;
+  const q=$('#q').value.toLowerCase(),f=$('#fl').value;
+  const list=base.filter(e=>(!f||est(e)===f)&&(e.nombre+e.cedula+e.encargado+e.correo+e.telefono).toLowerCase().includes(q));
+  $('#rows').innerHTML=list.length?list.map(e=>{const t=tot(e),s=est(e);return `<tr data-id="${e.id}"><td><b>${esc(e.nombre)}</b></td><td>${esc(e.cedula)||'—'}</td><td>${esc(e.encargado)||'—'}</td><td class="r">${fmt(t.c)}</td><td class="r">${fmt(t.p)}</td><td class="r"><b>${fmt(Math.max(t.s,0))}</b></td><td><span class="tag ${s}">${estTxt(e)}</span></td></tr>`}).join(''):`<tr><td colspan="7" class="empty">${base.length?'Ningún estudiante coincide con la búsqueda.':'No hay estudiantes en esta selección. Use “+ Agregar estudiante”'+(adm()?' o “Importar Excel”.':'.')}</td></tr>`;
+}
+let view='home',open=0;
+function homeView(){
+  const v=vis();
+  $('#home').innerHTML=GR.filter(g=>adm()||g===U.grado).map(g=>{
+    const l=v.filter(e=>e.grado===g),pn=l.filter(e=>est(e)==='pe').length,o=open===g;
+    return `<div class="gc"><button class="gh ${o?'on':''}" data-g="${g}" aria-expanded="${o}"><span><b>${GN[g]}</b> <small>(${g}°)</small></span><span class="gm">${l.length} estudiantes · ${pn} con saldo pendiente ${o?'▲':'▼'}</span></button>${o?`<div class="sg">${[1,2,3,4].filter(n=>adm()||n===U.seccion).map(n=>{const s=l.filter(x=>x.seccion===n),p=s.filter(x=>est(x)==='pe').length;return `<button class="sc2" data-s="${n}" data-gg="${g}"><b>${g}-${n}</b><small>${s.length} estudiantes</small><small>${p} con saldo pendiente</small></button>`}).join('')}</div>`:''}</div>`}).join('');
+}
+$('#home').onclick=e=>{
+  const s=e.target.closest('[data-s]');
+  if(s){G=+s.dataset.gg;SE=+s.dataset.s;view='sec';$('#q').value='';$('#fl').value='';render();return}
+  const b=e.target.closest('[data-g]');if(b){const g=+b.dataset.g;open=open===g?0:g;render()}
+};
+$('#bk').onclick=()=>{view='home';open=G;render()};
+$('#q').oninput=render;$('#fl').onchange=render;
+$('#rows').onclick=e=>{const tr=e.target.closest('tr[data-id]');if(tr)detail(tr.dataset.id)};
+
+/* ---------- Agregar ---------- */
+$('#add').onclick=()=>{
+  const dl=$('#dt'),lock=!adm();
+  dl.innerHTML=`<div class="bar"><h2>Nuevo estudiante</h2><span class="sp"></span><button id="x">Cerrar</button></div>
+  <div class="g2"><div><label for="an">Nombre del estudiante *</label><input id="an" autocomplete="off"></div><div><label for="ad">Cédula del estudiante *</label><input id="ad" inputmode="numeric" autocomplete="off"></div></div>
+  <div class="g2"><div><label for="ag">Grado</label><select id="ag" ${lock?'disabled':''}>${gOpt(lock?U.grado:G)}</select></div><div><label for="as">Sección</label><select id="as" ${lock?'disabled':''}></select></div></div>
+  <div class="g2"><div><label for="ae">Nombre del encargado *</label><input id="ae" autocomplete="off"></div><div><label for="ac">Correo del encargado *</label><input id="ac" type="email"></div></div>
+  <div class="g2"><div><label for="at">Teléfono (opcional)</label><input id="at"></div><div></div></div>
+  <div class="g2"><div><label for="am">Monto adeudado (₡)</label><input id="am" type="number" min="0" step="1" placeholder="45000"></div><div><label for="ao">Concepto</label><input id="ao" value="Matrícula"></div></div>
+  <div class="bar" style="margin:14px 0 0"><button class="p" id="sv">Guardar estudiante</button></div>`;
+  const fs=()=>{$('#as').innerHTML=sOpt($('#ag').value,lock?U.seccion:(SE||1))};fs();$('#ag').onchange=fs;
+  dl.showModal();$('#x').onclick=()=>dl.close();
+  $('#sv').onclick=()=>{
+    const nombre=$('#an').value.trim(),cedula=$('#ad').value.replace(/\D/g,''),encargado=$('#ae').value.trim(),correo=$('#ac').value.trim();
+    if(!nombre)return toast('Escriba el nombre del estudiante');
+    if(!/^\d{9,12}$/.test(cedula))return toast('Escriba la cédula del estudiante (9 a 12 dígitos)');
+    if(!encargado)return toast('Escriba el nombre del encargado');
+    if(!/^\S+@\S+\.\S+$/.test(correo))return toast('Escriba un correo válido del encargado');
+    if(S.est.some(x=>x.cedula===cedula))return toast('Ya existe un estudiante con esa cédula');
+    const g=+$('#ag').value,s=+$('#as').value;
+    if(S.est.some(x=>x.nombre.toLowerCase()===nombre.toLowerCase()&&x.grado===g&&x.seccion===s))return toast('Ese estudiante ya existe en esa sección');
+    const m=num($('#am').value);
+    S.est.push({id:uid(),nombre,grado:g,seccion:s,cedula,encargado,correo,telefono:$('#at').value.trim(),movs:m>0?[{id:uid(),tipo:'cargo',concepto:$('#ao').value||'Cargo',monto:m,fecha:hoy()}]:[]});
+    sortS();save();render();dl.close();toast('Estudiante guardado');
+  };
+};
+
+/* ---------- Detalle y pagos ---------- */
+function detail(id){
+  const e=S.est.find(x=>x.id===id);if(!e)return;
+  const t=tot(e),dl=$('#dt'),lock=!adm();
+  dl.innerHTML=`<div class="bar"><h2>${esc(e.nombre)}</h2><span class="sp"></span><button id="ver">Estado de cuenta</button><button id="x">Cerrar</button></div>
+  <div class="g2"><div><label for="en">Nombre</label><input id="en" value="${esc(e.nombre)}"></div><div><label for="ed">Cédula</label><input id="ed" value="${esc(e.cedula)}"></div></div>
+  <div class="g2"><div><label for="eg">Grado</label><select id="eg" ${lock?'disabled':''}>${gOpt(e.grado)}</select></div><div><label for="es">Sección</label><select id="es" ${lock?'disabled':''}>${sOpt(e.grado,e.seccion)}</select></div></div>
+  <div class="g2"><div><label for="ee">Nombre del encargado</label><input id="ee" value="${esc(e.encargado)}"></div><div><label for="ec">Correo del encargado</label><input id="ec" type="email" value="${esc(e.correo)}"></div></div>
+  <div class="g2"><div><label for="et">Teléfono</label><input id="et" value="${esc(e.telefono)}"></div><div></div></div>
+  <div class="sum" style="margin-top:12px"><div><b>${fmt(t.c)}</b><span>Total a pagar</span></div><div><b>${fmt(t.p)}</b><span>Total abonado</span></div><div><b>${fmt(Math.max(t.s,0))}</b><span>Saldo (${lbl[est(e)]})</span></div></div>
+  <div class="tw hp" style="max-height:190px;overflow:auto"><table style="min-width:0"><tbody>${e.movs.length?e.movs.slice().reverse().map(m=>`<tr><td>${esc(m.fecha)}</td><td>${esc(m.concepto)}${m.metodo?' ('+esc(m.metodo)+')':''}</td><td class="r" style="color:${m.tipo==='pago'?'var(--ok)':'var(--wr)'}">${m.tipo==='pago'?'−':'+'}${fmt(m.monto)}</td><td>${m.tipo==='pago'?`<button data-r="${m.id}">Reenviar correo</button>`:''}</td></tr>`).join(''):'<tr><td class="empty">Sin movimientos todavía.</td></tr>'}</tbody></table></div>
+  <div class="box"><h3>Registrar abono</h3>
+  <div class="g3"><div><label for="pm">Monto (₡)</label><input id="pm" type="number" min="0" step="1" value="${t.s>0?Math.round(t.s*100)/100:''}"></div>
+  <div><label for="pt">Método</label><select id="pt"><option>Efectivo</option><option>Transferencia</option><option>SINPE Móvil</option><option>Tarjeta</option><option>Depósito</option></select></div>
+  <div><label for="pr">Referencia</label><input id="pr" placeholder="Opcional"></div></div>
+  <div class="g2"><div><label for="pc">Concepto</label><input id="pc" value="Abono mensual"></div><div><label for="pfe">Fecha del abono</label><input id="pfe" type="date" value="${hoy()}"></div></div><div class="bar" style="margin:10px 0 0"><button class="p" id="pg">Registrar abono y preparar aviso</button></div></div>
+  <div class="box"><h3>Agregar cargo</h3><div class="g2"><div><label for="cc">Concepto</label><input id="cc" value="Mensualidad"></div><div><label for="cm">Monto (₡)</label><input id="cm" type="number" min="0" step="1"></div></div><div class="bar" style="margin:10px 0 0"><button id="cg">Agregar cargo</button></div></div>
+  <button class="d" id="del">Eliminar estudiante</button>`;
+  dl.querySelector('#del').hidden=!adm();
+  dl.showModal();
+  $('#eg').onchange=()=>{$('#es').innerHTML=sOpt($('#eg').value,1)};
+  const upd=()=>{const n=$('#en').value.trim();if(n)e.nombre=n;e.cedula=$('#ed').value.replace(/\D/g,'');e.encargado=$('#ee').value.trim();e.correo=$('#ec').value.trim();e.telefono=$('#et').value.trim();e.grado=+$('#eg').value;e.seccion=+$('#es').value;sortS();save();render()};
+  $('#x').onclick=()=>{upd();dl.close()};
+  $('#ver').onclick=()=>{upd();dl.close();estado(e)};
+  $('#cg').onclick=()=>{const m=num($('#cm').value);if(!(m>0))return toast('Escriba un monto mayor a cero');upd();e.movs.push({id:uid(),tipo:'cargo',concepto:$('#cc').value||'Cargo',monto:m,fecha:hoy()});save();render();detail(id)};
+  $('#pg').onclick=()=>{const m=num($('#pm').value);if(!(m>0))return toast('Escriba un monto mayor a cero');upd();const mv={id:uid(),tipo:'pago',concepto:$('#pc').value||'Abono mensual',monto:m,fecha:$('#pfe').value||hoy(),metodo:$('#pt').value,ref:$('#pr').value.trim()};e.movs.push(mv);save();render();dl.close();toast('Abono registrado. Enviando el correo al encargado…')};
+  let sure=false;
+  $('#del').onclick=()=>{if(!sure){sure=true;$('#del').textContent='¿Seguro? Presione otra vez para eliminar';return}S.est=S.est.filter(x=>x.id!==id);save();render();dl.close()};
+  dl.querySelectorAll('[data-r]').forEach(b=>b.onclick=async()=>{upd();b.disabled=true;try{mailToast(await API('POST','/students/'+id+'/receipt',{movId:b.dataset.r}))}catch(er){toast(er.message)}b.disabled=false});
+}
+const MES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','setiembre','octubre','noviembre','diciembre'];
+const mesDe=k=>{const p=k.split('-');return MES[+p[1]-1]+' '+p[0]};
+function estado(e){
+  const t=tot(e),s=est(e),dl=$('#em');
+  const ms=e.movs.slice().sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  let run=0;const filas=ms.map(m=>{run+=m.tipo==='cargo'?m.monto:-m.monto;return{...m,run}});
+  const pm={};ms.filter(m=>m.tipo==='pago').forEach(m=>{const k=m.fecha.slice(0,7);pm[k]=pm[k]||{n:0,t:0};pm[k].n++;pm[k].t+=m.monto});
+  const ks=Object.keys(pm).sort();
+  const texto=`Estimado(a) ${e.encargado||'encargado'}:\n\nLe compartimos el estado de cuenta de ${e.nombre} (${e.grado}-${e.seccion}) al ${hoy()}:\n\n  Total a pagar: ${fmt(t.c)}\n  Total abonado: ${fmt(t.p)}\n  Saldo pendiente: ${fmt(Math.max(t.s,0))}\n  Estado: ${lbl[s]}\n\nAbonos por mes:\n${ks.length?ks.map(k=>`  ${mesDe(k)}: ${fmt(pm[k].t)}`).join('\n'):'  Sin abonos registrados'}\n\nMovimientos:\n${filas.map(m=>`  ${m.fecha}  ${m.concepto}: ${m.tipo==='cargo'?'+':'-'}${fmt(m.monto)}  (saldo ${fmt(m.run)})`).join('\n')||'  Sin movimientos'}\n\nDepartamento de Bienestar Estudiantil`;
+  dl.innerHTML=`<div class="bar"><h2>Estado de cuenta</h2><span class="sp"></span><button id="ex">Cerrar</button></div>
+  <p class="sub" style="margin-bottom:8px">${esc(e.nombre)} – ${e.grado}-${e.seccion} – Cédula ${esc(e.cedula)||'sin registrar'} – Encargado: ${esc(e.encargado)||'sin registrar'}</p>
+  <div class="sum"><div><b>${fmt(t.c)}</b><span>Total a pagar</span></div><div><b>${fmt(t.p)}</b><span>Total abonado</span></div><div><b>${fmt(Math.max(t.s,0))}</b><span>Saldo pendiente</span></div><div><b>${lbl[s]}</b><span>Estado de cuenta</span></div></div>
+  <h3>Abonos por mes</h3>
+  <div class="tw hp"><table style="min-width:0"><thead><tr><th>Mes</th><th class="r">Abonos</th><th class="r">Total abonado</th></tr></thead><tbody>${ks.length?ks.map(k=>`<tr><td>${mesDe(k)}</td><td class="r">${pm[k].n}</td><td class="r">${fmt(pm[k].t)}</td></tr>`).join(''):'<tr><td colspan="3" class="empty">Todavía no hay abonos.</td></tr>'}</tbody></table></div>
+  <h3 style="margin-top:12px">Movimientos</h3>
+  <div class="tw hp" style="max-height:240px;overflow:auto"><table style="min-width:0"><thead><tr><th>Fecha</th><th>Concepto</th><th class="r">Cargo</th><th class="r">Abono</th><th class="r">Saldo</th></tr></thead><tbody>${filas.length?filas.map(m=>`<tr><td>${esc(m.fecha)}</td><td>${esc(m.concepto)}</td><td class="r">${m.tipo==='cargo'?fmt(m.monto):''}</td><td class="r">${m.tipo==='pago'?fmt(m.monto):''}</td><td class="r">${fmt(m.run)}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">Sin movimientos.</td></tr>'}</tbody></table></div>
+  <div class="bar" style="margin:12px 0 0"><button class="p" id="env">Enviar estado de cuenta al correo del encargado</button></div>`;
+  dl.showModal();$('#ex').onclick=()=>dl.close();
+  $('#env').onclick=async()=>{const b=$('#env');b.disabled=true;try{mailToast(await API('POST','/students/'+e.id+'/statement',{}))}catch(er){toast(er.message)}b.disabled=false};
+}
+/* ---------- Excel ---------- */
+const nn=s=>String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+const hk=(r,t)=>{for(const k in r){if(t(nn(k)))return String(r[k]).trim()}return''};
+const isEnc=h=>/encargad|responsabl|padre|madre|tutor/.test(h),isId=h=>/cedula|identific/.test(h);
+function key(r,...ks){for(const k in r){if(ks.some(x=>nn(k).includes(x)))return String(r[k]).trim()}return''}
+const GW={setimo:7,septimo:7,octavo:8,noveno:9,decimo:10,undecimo:11,duodecimo:12};
+function gs(g,s){
+  g=nn(g);s=nn(s);
+  const re=/(\d{1,2})\s*[-–\/.°º]\s*(\d)/,m=s.match(re)||g.match(re);
+  let a,b;if(m){a=+m[1];b=+m[2]}else{a=GW[g]||parseInt(g)||0;b=parseInt(s)||0}
+  return a>=7&&a<=12&&b>=1&&b<=4?[a,b]:null;
+}
+$('#file').onchange=ev=>{
+  const f=ev.target.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=e=>{try{
+    const wb=XLSX.read(e.target.result,{type:'array'});
+    const rows=[];wb.SheetNames.filter(n=>nn(n)!=='instrucciones').forEach(n=>XLSX.utils.sheet_to_json(wb.Sheets[n],{defval:''}).forEach(r=>{r.__hoja=n;rows.push(r)}));
+    let a=0,u=0,bad=0,out=0,miss=0;const dist={};
+    rows.forEach(r=>{
+      const nombre=hk(r,h=>/nombre|alumno|estudiante/.test(h)&&!isEnc(h)&&!isId(h));if(!nombre)return;
+      const p=gs(key(r,'grado'),key(r,'seccion'))||gs(r.__hoja,'');if(!p){bad++;return}
+      if(!adm()&&(p[0]!==U.grado||p[1]!==U.seccion)){out++;return}
+      const cedula=hk(r,h=>isId(h)&&!isEnc(h)).replace(/\D/g,''),encargado=hk(r,h=>isEnc(h)&&!/correo|email|mail|tel|cel|cedula/.test(h)),correo=hk(r,h=>/correo|email|mail/.test(h));
+      if(!/^\d{9,12}$/.test(cedula)||!encargado||!/^\S+@\S+\.\S+$/.test(correo)){miss++;return}
+      const kd=p[0]+'-'+p[1];dist[kd]=(dist[kd]||0)+1;
+      const tel=hk(r,h=>/telef|celular/.test(h));
+      const monto=num(key(r,'monto','saldo','deuda','adeud','cuota')),conc=key(r,'concepto')||'Saldo inicial';
+      let s=S.est.find(x=>x.cedula&&x.cedula===cedula)||S.est.find(x=>x.nombre.toLowerCase()===nombre.toLowerCase()&&x.grado===p[0]&&x.seccion===p[1]);
+      if(s){s.nombre=nombre;s.cedula=cedula;s.encargado=encargado;s.correo=correo;if(tel)s.telefono=tel;s.grado=p[0];s.seccion=p[1];u++}
+      else{s={id:uid(),nombre,cedula,encargado,grado:p[0],seccion:p[1],correo,telefono:tel,movs:[]};S.est.push(s);a++;if(monto>0)s.movs.push({id:uid(),tipo:'cargo',concepto:conc,monto,fecha:hoy()})}
+    });
+    sortS();save();render();
+    const ks=Object.keys(dist).sort((x,y)=>{const p1=x.split('-'),p2=y.split('-');return p1[0]-p2[0]||p1[1]-p2[1]});
+    const dl=$('#dt');
+    dl.innerHTML=`<div class="bar"><h2>Importación lista</h2><span class="sp"></span><button id="x">Cerrar</button></div><p class="sub">${a} estudiantes nuevos y ${u} actualizados. Quedaron distribuidos por sección así:</p><div class="sum">${ks.map(k=>`<div><b>${dist[k]}</b><span>Sección ${k}</span></div>`).join('')}</div>${bad?`<p class="msg">${bad} filas se omitieron porque no tenían un grado o una sección válidos (de 7-1 a 12-4).</p>`:''}${miss?`<p class="msg">${miss} filas se omitieron porque les faltaba la cédula, el nombre del encargado o un correo válido del encargado (son obligatorios).</p>`:''}${out?`<p class="msg">${out} filas se omitieron porque no son de su sección.</p>`:''}`;
+    dl.showModal();$('#x').onclick=()=>dl.close();
+  }catch(x){toast('No se pudo leer el archivo. Use la plantilla.')}ev.target.value=''};
+  rd.readAsArrayBuffer(f);
+};
+$('#tpl').onclick=()=>{
+  const ws=XLSX.utils.aoa_to_sheet([['Nombre del estudiante','Cédula del estudiante','Grado','Sección','Nombre del encargado','Correo del encargado','Teléfono (opcional)','Monto adeudado (₡)','Concepto'],['Ejemplo Ana Pérez Rojas','123456789',7,'7-1','María Rojas Vargas','maria.rojas@correo.com','8888-0000',45000,'Matrícula'],['Ejemplo Luis Mora Vega','234567890',12,'12-4','José Mora Solano','jose.mora@correo.com','7777-1111',30000,'Mensualidad']]);
+  ws['!cols']=[{wch:28},{wch:20},{wch:8},{wch:10},{wch:28},{wch:30},{wch:18},{wch:20},{wch:18}];
+  const ins=XLSX.utils.aoa_to_sheet([['Cómo llenar la hoja “Estudiantes”'],[''],['Fila 1: títulos de las columnas. No los cambie ni los borre.'],['Desde la fila 2: un estudiante por fila. Borre las dos filas de ejemplo.'],['Obligatorios: nombre, cédula, grado, sección, nombre y correo del encargado. Opcionales: teléfono, monto y concepto.'],['Columna A – Nombre del estudiante: nombre completo.'],['Columna B – Cédula del estudiante: solo números (9 a 12 dígitos).'],['Columna C – Grado: número del 7 al 12.'],['Columna D – Sección: grado y número, por ejemplo 7-1, 8-3, 12-4 (del 1 al 4). El sistema coloca a cada estudiante en su grado y sección.'],['Columna E – Nombre del encargado.'],['Columna F – Correo del encargado: ahí se envía el aviso de pago.'],['Columna G – Teléfono (opcional).'],['Columna H – Monto adeudado (₡): solo el número en colones, por ejemplo 45000, sin el símbolo ₡ (opcional).'],['Columna I – Concepto: matrícula, mensualidad, etc. (opcional).'],[''],['Luego, en el sistema, presione “Subir Excel con todos los estudiantes” y elija este archivo.']]);
+  ins['!cols']=[{wch:95}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Estudiantes');XLSX.utils.book_append_sheet(wb,ins,'Instrucciones');
+  bajar(wb,'plantilla-estudiantes.xlsx');
+};
+$('#exp').onclick=()=>{
+  const v=vis();if(!v.length)return toast('No hay datos para exportar');
+  const wb=XLSX.utils.book_new(),mv=[];
+  GR.forEach(g=>{
+    const l=v.filter(e=>e.grado===g);if(!l.length)return;
+    const rows=l.map(e=>{const t=tot(e),s=est(e);return{'Sección':e.grado+'-'+e.seccion,Nombre:e.nombre,'Cédula':e.cedula,Encargado:e.encargado,'Correo del encargado':e.correo,'Teléfono':e.telefono,Moneda:'Colones (₡)','Total cargos (₡)':t.c,'Total pagado (₡)':t.p,'Saldo pendiente (₡)':Math.max(t.s,0),Estado:lbl[s],Detalle:s==='pe'?'Debe '+fmt(t.s):(s==='pa'?'Sin deuda':'Sin cargos registrados')}});
+    const ws=XLSX.utils.json_to_sheet(rows);ws['!cols']=[{wch:9},{wch:28},{wch:14},{wch:26},{wch:30},{wch:14},{wch:13},{wch:16},{wch:16},{wch:19},{wch:11},{wch:22}];
+    XLSX.utils.book_append_sheet(wb,ws,GN[g]);
+  });
+  v.forEach(e=>e.movs.forEach(x=>mv.push({'Sección':e.grado+'-'+e.seccion,Estudiante:e.nombre,Fecha:x.fecha,Tipo:x.tipo==='cargo'?'Cargo':'Pago',Concepto:x.concepto,'Método':x.metodo||'',Referencia:x.ref||'','Monto (₡)':x.monto})));
+  const ab={};
+  v.forEach(e=>e.movs.filter(x=>x.tipo==='pago').forEach(x=>{const k=e.id+'|'+x.fecha.slice(0,7);(ab[k]=ab[k]||{'Sección':e.grado+'-'+e.seccion,Estudiante:e.nombre,Mes:mesDe(x.fecha.slice(0,7)),'Cantidad de abonos':0,'Total abonado (₡)':0});ab[k]['Cantidad de abonos']++;ab[k]['Total abonado (₡)']+=x.monto}));
+  const abl=Object.values(ab);
+  if(abl.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(abl),'Abonos por mes');
+  if(mv.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(mv),'Movimientos');
+  bajar(wb,'estados-de-cuenta-'+hoy()+'.xlsx');
+};
+
+/* ---------- Administración ---------- */
+$('#yr').onclick=()=>{
+  const dl=$('#dt');
+  dl.innerHTML=`<div class="bar"><h2>Nuevo año</h2><span class="sp"></span><button id="x">Cerrar</button></div>
+  <p class="sub">Antes de borrar, descargue el Excel con “Descargar Excel actualizado” para conservar un respaldo. Para actualizar los nombres del año nuevo: borre todo e importe la lista nueva, o edite cada estudiante abriendo su ficha.</p>
+  <div class="box"><h3>Confirmación</h3><label for="cf">Escriba BORRAR para activar los botones</label><input id="cf" autocomplete="off"></div>
+  <div class="bar"><button class="d" id="b1" disabled>Borrar solo cargos y pagos (conservar estudiantes)</button></div>
+  <div class="bar"><button class="d" id="b2" disabled>Borrar TODOS los estudiantes y sus datos</button></div>
+  <p class="note">Las cuentas de usuarios no se borran.</p>`;
+  dl.showModal();$('#x').onclick=()=>dl.close();
+  $('#cf').oninput=()=>{const ok=$('#cf').value.trim()==='BORRAR';$('#b1').disabled=$('#b2').disabled=!ok};
+  const go=async(mode,t)=>{try{await API('POST','/reset',{mode,confirm:'BORRAR'});await refresh(true);dl.close();toast(t)}catch(e){toast(e.message)}};
+  $('#b1').onclick=()=>go('movs','Cargos y pagos borrados');
+  $('#b2').onclick=()=>go('all','Todos los estudiantes fueron borrados');
+};
+$('#usr').onclick=()=>{
+  const dl=$('#dt');
+  async function draw(){
+    let us=[];try{us=(await API('GET','/users')).users}catch(e){toast(e.message)}
+    dl.innerHTML=`<div class="bar"><h2>Usuarios</h2><span class="sp"></span><button id="x">Cerrar</button></div>
+    <div class="tw hp"><table style="min-width:0"><tbody>${us.map(u=>`<tr><td>${esc(u.id)}</td><td>${u.rol==='admin'?'Administrador':'Profe guía '+u.grado+'-'+u.seccion}</td><td>${u.aprobado?'Activa':'<b style="color:var(--wr)">Pendiente de aprobación</b>'}</td><td>${u.id===U.id?'(usted)':(u.aprobado?'':`<button class="p" data-a="${esc(u.id)}">Aprobar</button> `)+`<button data-k="${esc(u.id)}">Nueva contraseña</button> <button class="d" data-u="${esc(u.id)}">Eliminar</button>`}</td></tr>`).join('')||'<tr><td class="empty">Sin usuarios.</td></tr>'}</tbody></table></div>
+    <div class="box"><h3>Crear cuenta (queda activa de inmediato)</h3>
+    <div class="g2"><div><label for="nc">Cédula</label><input id="nc" inputmode="numeric"></div><div><label for="np">Contraseña (mín. 6)</label><input id="np" type="password"></div></div>
+    <div class="g3"><div><label for="nr">Tipo</label><select id="nr"><option value="profe">Profe guía</option><option value="admin">Administrador</option></select></div><div><label for="ng">Grado</label><select id="ng">${gOpt(7)}</select></div><div><label for="ns">Sección</label><select id="ns">${sOpt(7,1)}</select></div></div>
+    <div class="bar" style="margin:10px 0 0"><button class="p" id="nb">Crear cuenta</button></div></div>`;
+    $('#x').onclick=()=>dl.close();
+    $('#ng').onchange=()=>{$('#ns').innerHTML=sOpt($('#ng').value,1)};
+    const act=async(f,t)=>{try{await f();toast(t);draw()}catch(e){toast(e.message)}};
+    dl.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>act(()=>API('PATCH','/users/'+b.dataset.a,{aprobado:true}),'Cuenta aprobada'));
+    dl.querySelectorAll('[data-u]').forEach(b=>b.onclick=()=>{if(confirm('¿Eliminar la cuenta '+b.dataset.u+'?'))act(()=>API('DELETE','/users/'+b.dataset.u),'Cuenta eliminada')});
+    dl.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{const p=prompt('Nueva contraseña para '+b.dataset.k+' (mínimo 6 caracteres):');if(p)act(()=>API('PATCH','/users/'+b.dataset.k,{password:p}),'Contraseña cambiada')});
+    $('#nb').onclick=()=>act(()=>API('POST','/users',{cedula:$('#nc').value,password:$('#np').value,rol:$('#nr').value,grado:+$('#ng').value,seccion:+$('#ns').value}),'Cuenta creada');
+  }
+  dl.showModal();draw();
+};
+lgView();initDb();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
+</script>
+</body>
+</html>

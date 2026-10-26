@@ -1,0 +1,10 @@
+{
+  "name": "bienestar-estudiantil",
+  "version": "1.0.0",
+  "description": "Estados de cuenta del departamento de bienestar estudiantil, con cuentas de usuario y correo automático",
+  "private": true,
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "nodemailer": "^6.9.16" }
+}

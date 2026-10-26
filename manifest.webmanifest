@@ -1,0 +1,11 @@
+{
+  "name": "Bienestar estudiantil – Estados de cuenta",
+  "short_name": "Bienestar",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f2f5f4",
+  "theme_color": "#14604a",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
