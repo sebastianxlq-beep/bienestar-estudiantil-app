@@ -19,20 +19,79 @@ const INST = process.env.INSTITUCION || 'Departamento de Bienestar Estudiantil';
 const ADMIN_CEDULA = String(process.env.ADMIN_CEDULA || '').replace(/\D/g, '');
 const PUB = path.join(__dirname, 'public');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
-fs.mkdirSync(DATA_DIR, { recursive: true });
-
-/* ---------- Base de datos (archivo JSON) ---------- */
-let db = { users: {}, students: {} };
-try { db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); }
-catch (e) {
-  if (e.code !== 'ENOENT') { console.error('No se pudo leer ' + DB_FILE + ': ' + e.message + '\nNo se inicia para no perder datos. Restaure un respaldo de la carpeta backups.'); process.exit(1); }
+const USE_POSTGRES = !!process.env.DATABASE_URL;
+let pool = null;
+if (USE_POSTGRES) {
+  const { Pool } = require('pg');
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    // Render PostgreSQL accepts TLS; allow its managed certificate chain.
+    ssl: (process.env.DATABASE_SSL || 'true').toLowerCase() === 'false' ? false : { rejectUnauthorized: false },
+    max: 5,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000
+  });
+} else {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
 }
-db.users = db.users || {}; db.students = db.students || {};
+
+/* ---------- Almacenamiento persistente ---------- */
+let db = { users: {}, students: {} };
 let saveTimer = null;
-function flush() { clearTimeout(saveTimer); const tmp = DB_FILE + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(db)); fs.renameSync(tmp, DB_FILE); }
-function persist() { clearTimeout(saveTimer); saveTimer = setTimeout(flush, 300); }
+let writeChain = Promise.resolve();
 const today = () => new Date().toISOString().slice(0, 10);
+async function initStorage() {
+  if (USE_POSTGRES) {
+    await pool.query(`CREATE TABLE IF NOT EXISTS bienestar_app_state (
+      id SMALLINT PRIMARY KEY CHECK (id = 1),
+      data JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`);
+    const result = await pool.query('SELECT data FROM bienestar_app_state WHERE id = 1');
+    if (result.rowCount) {
+      db = result.rows[0].data || { users: {}, students: {} };
+    } else {
+      // First initialization: import an existing local JSON file if one exists.
+      try { db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); }
+      catch (e) { if (e.code !== 'ENOENT') throw e; }
+      db.users = db.users || {}; db.students = db.students || {};
+      await pool.query('INSERT INTO bienestar_app_state (id, data) VALUES (1, $1::jsonb) ON CONFLICT (id) DO NOTHING', [JSON.stringify(db)]);
+      const verify = await pool.query('SELECT data FROM bienestar_app_state WHERE id = 1');
+      db = verify.rows[0].data || db;
+    }
+    db.users = db.users || {}; db.students = db.students || {};
+    console.log('Almacenamiento persistente: PostgreSQL.');
+  } else {
+    try { db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); }
+    catch (e) {
+      if (e.code !== 'ENOENT') throw new Error('No se pudo leer ' + DB_FILE + ': ' + e.message + '. No se inicia para evitar pérdida de datos.');
+    }
+    db.users = db.users || {}; db.students = db.students || {};
+    backup();
+    console.log('ADVERTENCIA: usando archivo JSON local; no es adecuado para producción en un host efímero.');
+  }
+}
+async function flush() {
+  clearTimeout(saveTimer);
+  const snapshot = JSON.stringify(db);
+  if (USE_POSTGRES) {
+    // Serialize writes so an older snapshot cannot overwrite a newer one.
+    writeChain = writeChain.then(() => pool.query(
+      'INSERT INTO bienestar_app_state (id, data, updated_at) VALUES (1, $1::jsonb, NOW()) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()',
+      [snapshot]
+    ));
+    return writeChain;
+  }
+  const tmp = DB_FILE + '.tmp';
+  fs.writeFileSync(tmp, snapshot);
+  fs.renameSync(tmp, DB_FILE);
+}
+function persist() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { flush().catch(e => console.error('Error guardando datos:', e.message)); }, 300);
+}
 function backup() {
+  if (USE_POSTGRES) return; // PostgreSQL is stored separately; file backups are only for local mode.
   try {
     if (!fs.existsSync(DB_FILE)) return;
     const bd = path.join(DATA_DIR, 'backups'); fs.mkdirSync(bd, { recursive: true });
@@ -42,8 +101,14 @@ function backup() {
     all.slice(0, Math.max(0, all.length - 30)).forEach(x => fs.unlinkSync(path.join(bd, x)));
   } catch (e) { console.error('No se pudo respaldar:', e.message); }
 }
-backup(); setInterval(() => { flush(); backup(); }, 6 * 3600e3).unref();
-['SIGINT', 'SIGTERM'].forEach(s => process.on(s, () => { try { flush(); } catch (e) { } process.exit(0); }));
+if (!USE_POSTGRES) setInterval(() => { flush().catch(e => console.error('Error guardando datos:', e.message)); backup(); }, 6 * 3600e3).unref();
+async function shutdown() {
+  try { await flush(); } catch (e) { console.error('Error al guardar durante el cierre:', e.message); }
+  server.close(() => {});
+  if (pool) { try { await pool.end(); } catch (e) {} }
+  process.exit(0);
+}
+['SIGINT', 'SIGTERM'].forEach(s => process.on(s, shutdown));
 
 /* ---------- Utilidades ---------- */
 const bad = (m, c = 400) => Object.assign(new Error(m), { status: c });
@@ -343,7 +408,13 @@ const server = http.createServer(async (req, res) => {
     console.error(e); json(res, 500, { error: 'Error interno del servidor.' });
   }
 });
-server.listen(PORT, process.env.HOST || '0.0.0.0', () => {
-  console.log(`Bienestar estudiantil listo en http://localhost:${PORT}`);
-  if (!hayAdmin()) console.log('Aún no hay administrador: abra la página y cree la primera cuenta (opción “Administrador”).');
+initStorage().then(() => {
+  server.listen(PORT, process.env.HOST || '0.0.0.0', () => {
+    console.log(`Bienestar estudiantil listo en http://localhost:${PORT}`);
+    if (!hayAdmin()) console.log('Aún no hay administrador: abra la página y cree la primera cuenta (opción “Administrador”).');
+  });
+}).catch(async e => {
+  console.error('No se pudo inicializar el almacenamiento. El servidor no se inicia para evitar pérdida de datos:', e.message);
+  if (pool) { try { await pool.end(); } catch (_) {} }
+  process.exit(1);
 });
