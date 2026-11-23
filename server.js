@@ -22,32 +22,69 @@ const PUB = path.join(__dirname, 'public');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
-/* ---------- Base de datos (archivo JSON) ---------- */
-let db = { users: {}, students: {} };
-try { db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); }
-catch (e) {
-  if (e.code !== 'ENOENT') { console.error('No se pudo leer ' + DB_FILE + ': ' + e.message + '\nNo se inicia para no perder datos. Restaure un respaldo de la carpeta backups.'); process.exit(1); }
+/* ---------- Base de datos (PostgreSQL en producción; JSON local) ---------- */
+let db = { users: {}, students: {}, archives: {}, resets: {}, meta: {} };
+let pool = null, writeQueue = Promise.resolve();
+const DATABASE_URL = process.env.DATABASE_URL || '';
+if (!DATABASE_URL) fs.mkdirSync(DATA_DIR, { recursive: true });
+function normalizeDb(value) {
+  const x = value && typeof value === 'object' ? value : {};
+  x.users = x.users || {}; x.students = x.students || {}; x.archives = x.archives || {};
+  x.resets = x.resets || {}; x.meta = x.meta || {};
+  return x;
 }
-db.users = db.users || {}; db.students = db.students || {};
-let saveTimer = null;
-function flush() { clearTimeout(saveTimer); const tmp = DB_FILE + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(db)); fs.renameSync(tmp, DB_FILE); }
-function persist() { clearTimeout(saveTimer); saveTimer = setTimeout(flush, 300); }
-const pad2 = n => String(n).padStart(2, '0');
-const today = () => { const d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
-db.archives = db.archives || {}; db.resets = db.resets || {}; db.meta = db.meta || { inicio: today() };
+function loadLocalDb() {
+  try { db = normalizeDb(JSON.parse(fs.readFileSync(DB_FILE, 'utf8'))); }
+  catch (e) {
+    if (e.code !== 'ENOENT') throw new Error('No se pudo leer ' + DB_FILE + ': ' + e.message);
+  }
+}
+async function initDatabase() {
+  if (DATABASE_URL) {
+    const { Pool } = require('pg');
+    pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false }, max: 5, idleTimeoutMillis: 30000, connectionTimeoutMillis: 15000 });
+    await pool.query('SELECT 1');
+    await pool.query(`CREATE TABLE IF NOT EXISTS public.app_state (id smallint PRIMARY KEY CHECK (id = 1), data jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now())`);
+    const result = await pool.query('SELECT data FROM public.app_state WHERE id = 1');
+    if (result.rowCount) db = normalizeDb(result.rows[0].data);
+    else {
+      // Importa una base JSON local solo si la tabla todavía está vacía.
+      loadLocalDb();
+      db.meta = db.meta || {};
+      await pool.query('INSERT INTO public.app_state (id, data) VALUES (1, $1::jsonb) ON CONFLICT (id) DO NOTHING', [JSON.stringify(db)]);
+      const saved = await pool.query('SELECT data FROM public.app_state WHERE id = 1');
+      db = normalizeDb(saved.rows[0].data);
+    }
+    console.log('Base de datos: PostgreSQL conectado.');
+  } else {
+    if (process.env.NODE_ENV === 'production') throw new Error('Falta DATABASE_URL. Configure Supabase en Render; no se iniciará con almacenamiento temporal.');
+    loadLocalDb();
+    console.log('Base de datos: archivo JSON local.');
+  }
+  if (!db.meta.inicio) db.meta.inicio = new Date().toISOString().slice(0, 10);
+}
+async function persist() {
+  const snapshot = JSON.stringify(db);
+  if (pool) {
+    writeQueue = writeQueue.then(() => pool.query('INSERT INTO public.app_state (id, data, updated_at) VALUES (1, $1::jsonb, now()) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()', [snapshot]));
+    return writeQueue;
+  }
+  const tmp = DB_FILE + '.tmp';
+  fs.writeFileSync(tmp, snapshot);
+  fs.renameSync(tmp, DB_FILE);
+}
+async function flush() { await persist(); }
 function backup() {
+  if (pool) return;
   try {
     if (!fs.existsSync(DB_FILE)) return;
     const bd = path.join(DATA_DIR, 'backups'); fs.mkdirSync(bd, { recursive: true });
-    const f = path.join(bd, 'db-' + today() + '.json');
+    const f = path.join(bd, 'db-' + new Date().toISOString().slice(0, 10) + '.json');
     fs.copyFileSync(DB_FILE, f);
     const all = fs.readdirSync(bd).filter(x => /^db-\d{4}-\d{2}-\d{2}\.json$/.test(x)).sort();
     all.slice(0, Math.max(0, all.length - 30)).forEach(x => fs.unlinkSync(path.join(bd, x)));
   } catch (e) { console.error('No se pudo respaldar:', e.message); }
 }
-backup(); setInterval(() => { flush(); backup(); }, 6 * 3600e3).unref();
-['SIGINT', 'SIGTERM'].forEach(s => process.on(s, () => { try { flush(); } catch (e) { } process.exit(0); }));
-
 /* ---------- Utilidades ---------- */
 const bad = (m, c = 400) => Object.assign(new Error(m), { status: c });
 const uid = () => crypto.randomBytes(6).toString('hex');
@@ -166,19 +203,19 @@ async function runReminders() {
       await new Promise(ok => setTimeout(ok, 300));
     }
     db.meta.recordatorio = { fecha: today(), enviados, fallidos, sinCorreo };
-    persist();
+    await persist();
     return db.meta.recordatorio;
   } finally { remindBusy = false; }
 }
-function checkReminders() {
+async function checkReminders() {
   if ((process.env.RECORDATORIO_MENSUAL || 'true').toLowerCase() === 'false' || !transporter) return;
   const d = new Date(), ym = today().slice(0, 7);
   if (d.getDate() !== (+process.env.REMINDER_DAY || 1) || d.getHours() < (process.env.REMINDER_HOUR === undefined ? 8 : +process.env.REMINDER_HOUR)) return;
   if (db.meta.recordatorioAuto === ym) return;
-  db.meta.recordatorioAuto = ym; persist();
+  db.meta.recordatorioAuto = ym; await persist();
   runReminders().catch(e => console.error('Recordatorios:', e.message));
 }
-setTimeout(checkReminders, 15000); setInterval(checkReminders, 15 * 60e3).unref();
+setTimeout(() => checkReminders().catch(e => console.error('Recordatorios:', e.message)), 15000); setInterval(() => checkReminders().catch(e => console.error('Recordatorios:', e.message)), 15 * 60e3).unref();
 
 /* ---------- Estudiantes ---------- */
 const inScope = (u, s) => u.rol === 'admin' || (s.grado === u.grado && s.seccion === u.seccion);
@@ -217,7 +254,7 @@ async function putStudent(u, id, body) {
     if (old.movs.some(m => nm.get(m.id) !== JSON.stringify(m))) throw bad('Solo un administrador puede modificar o eliminar movimientos.', 403);
   }
   db.students[id] = { ...n, creado: old ? old.creado : today() };
-  persist();
+  await persist();
   return { ok: true };
 }
 function studentFor(u, id) {
@@ -269,7 +306,7 @@ async function api(req, res, p) {
       if (ADMIN_CEDULA && String(b.cedula || '').replace(/\D/g, '') !== ADMIN_CEDULA) throw bad('Esa cédula no está autorizada para crear la cuenta de administrador.', 403);
     }
     const f = validUserFields(b, rol), aprobado = rol === 'admin' || !APPROVAL;
-    newUser(f.ced, f.pw, rol, f.grado, f.seccion, aprobado, f.correo); persist();
+    newUser(f.ced, f.pw, rol, f.grado, f.seccion, aprobado, f.correo); await persist();
     if (!aprobado) { notifyAdmins(req, f).catch(e => console.error('Aviso a administradores:', e.message)); return json(res, 201, { ok: true, pendiente: true }); }
     startSession(req, res, f.ced);
     return json(res, 200, { ok: true, user: pub({ id: f.ced, ...db.users[f.ced] }), inicio: db.meta.inicio });
@@ -300,7 +337,7 @@ async function api(req, res, p) {
       const token = crypto.randomBytes(32).toString('hex'), h = crypto.createHash('sha256').update(token).digest('hex');
       Object.keys(db.resets).forEach(t => { if (db.resets[t].id === ced || db.resets[t].exp < Date.now()) delete db.resets[t]; });
       db.resets[h] = { id: ced, exp: Date.now() + 3600e3 };
-      persist();
+      await persist();
       sendMail(x.correo, 'Cambiar su contraseña', `Recibimos una solicitud para cambiar la contraseña de la cuenta con cédula ${ced}.\n\nPara elegir una contraseña nueva, abra este enlace (vence en 1 hora):\n${baseUrl(req)}/#reset=${token}\n\nSi usted no lo solicitó, ignore este mensaje: su contraseña no cambia.\n\n${INST}`).catch(() => { });
     }
     return json(res, 200, { ok: true, mensaje: 'Si la cédula tiene una cuenta con correo registrado, enviamos un enlace para cambiar la contraseña. Vence en 1 hora.' });
@@ -311,7 +348,7 @@ async function api(req, res, p) {
     if (pw.length < 6 || pw.length > 100) throw bad('La contraseña debe tener al menos 6 caracteres.');
     const x = db.users[t.id]; x.salt = crypto.randomBytes(16).toString('hex'); x.hash = hashPw(pw, x.salt);
     sessions.forEach((sv, key) => { if (sv.id === t.id) sessions.delete(key); });
-    delete db.resets[h]; persist();
+    delete db.resets[h]; await persist();
     return json(res, 200, { ok: true });
   }
 
@@ -332,7 +369,7 @@ async function api(req, res, p) {
     if (id && !sub && m === 'PUT') return json(res, 200, await putStudent(u, id, b));
     if (id && !sub && m === 'DELETE') {
       if (u.rol !== 'admin') throw bad('Solo un administrador puede eliminar estudiantes.', 403);
-      delete db.students[id]; persist(); return json(res, 200, { ok: true });
+      delete db.students[id]; await persist(); return json(res, 200, { ok: true });
     }
     if (id && sub === 'draft' && m === 'GET') {
       const st = studentFor(u, id), q = new URL(req.url, 'http://x').searchParams, kind = q.get('kind');
@@ -370,12 +407,12 @@ async function api(req, res, p) {
     if (b.confirm !== 'FINALIZAR') throw bad('Falta la confirmación.');
     if (b.mode !== 'all' && b.mode !== 'movs') throw bad('Opción no válida.');
     if (Object.values(db.archives).some(a => a.nombre.toLowerCase() === nombre.toLowerCase())) throw bad('Ya existe un año guardado con ese nombre. Use otro nombre.', 409);
-    flush(); backup();
+    await flush(); backup();
     const id = uid() + uid();
     db.archives[id] = { id, nombre, inicio: db.meta.inicio, fin: today(), por: u.id, students: JSON.parse(JSON.stringify(db.students)) };
     if (b.mode === 'all') db.students = {}; else Object.values(db.students).forEach(x => { x.movs = []; });
     db.meta.inicio = today();
-    flush();
+    await flush();
     return json(res, 200, { ok: true, id, inicio: db.meta.inicio });
   }
   if ((r = p.match(/^\/api\/archives\/([A-Za-z0-9]+)$/)) && m === 'GET') {
@@ -394,7 +431,7 @@ async function api(req, res, p) {
     if (b.mode === 'all') db.students = {};
     else if (b.mode === 'movs') Object.values(db.students).forEach(s => { s.movs = []; });
     else throw bad('Opción no válida.');
-    persist(); return json(res, 200, { ok: true });
+    await persist(); return json(res, 200, { ok: true });
   }
   if ((r = p.match(/^\/api\/users(?:\/(\d+))?$/))) {
     const id = r[1];
@@ -404,7 +441,7 @@ async function api(req, res, p) {
     }
     if (!id && m === 'POST') {
       const rol = b.rol === 'admin' ? 'admin' : 'profe', f = validUserFields(b, rol);
-      newUser(f.ced, f.pw, rol, f.grado, f.seccion, true, f.correo); db.users[f.ced].aprobadoPor = u.id; persist(); return json(res, 200, { ok: true });
+      newUser(f.ced, f.pw, rol, f.grado, f.seccion, true, f.correo); db.users[f.ced].aprobadoPor = u.id; await persist(); return json(res, 200, { ok: true });
     }
     if (id && m === 'PATCH') {
       const x = db.users[id]; if (!x) throw bad('Usuario no encontrado.', 404);
@@ -418,14 +455,14 @@ async function api(req, res, p) {
         x.salt = crypto.randomBytes(16).toString('hex'); x.hash = hashPw(pw, x.salt);
         sessions.forEach((s, k) => { if (s.id === id) sessions.delete(k); });
       }
-      persist(); return json(res, 200, { ok: true });
+      await persist(); return json(res, 200, { ok: true });
     }
     if (id && m === 'DELETE') {
       if (id === u.id) throw bad('No puede eliminar su propia cuenta.');
       const x = db.users[id]; if (!x) throw bad('Usuario no encontrado.', 404);
       if (x.rol === 'admin' && Object.values(db.users).filter(y => y.rol === 'admin').length < 2) throw bad('Debe quedar al menos un administrador.');
       delete db.users[id]; sessions.forEach((s, k) => { if (s.id === id) sessions.delete(k); });
-      persist(); return json(res, 200, { ok: true });
+      await persist(); return json(res, 200, { ok: true });
     }
   }
   throw bad('No encontrado.', 404);
@@ -460,7 +497,17 @@ const server = http.createServer(async (req, res) => {
     console.error(e); json(res, 500, { error: 'Error interno del servidor.' });
   }
 });
-server.listen(PORT, process.env.HOST || '0.0.0.0', () => {
-  console.log(`Bienestar estudiantil listo en http://localhost:${PORT}`);
-  if (!hayAdmin()) console.log('Aún no hay administrador: abra la página y cree la primera cuenta (opción “Administrador”).');
-});
+async function start() {
+  await initDatabase();
+  backup();
+  setInterval(() => { flush().catch(e => console.error('No se pudo guardar la base:', e.message)); backup(); }, 6 * 3600e3).unref();
+  ['SIGINT', 'SIGTERM'].forEach(signal => process.on(signal, async () => {
+    try { await flush(); if (pool) await pool.end(); } catch (e) { console.error('Error al cerrar:', e.message); }
+    process.exit(0);
+  }));
+  server.listen(PORT, process.env.HOST || '0.0.0.0', () => {
+    console.log(`Bienestar estudiantil listo en http://localhost:${PORT}`);
+    if (!hayAdmin()) console.log('Aún no hay administrador: abra la página y cree la primera cuenta (opción “Administrador”).');
+  });
+}
+start().catch(e => { console.error('No se pudo iniciar el servidor:', e.message); process.exit(1); });

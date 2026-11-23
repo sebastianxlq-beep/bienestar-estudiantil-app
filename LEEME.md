@@ -1,7 +1,6 @@
 # Bienestar estudiantil – Sistema con servidor y correo automático
 
-Sistema web con cuentas de usuario (cédula y contraseña), estudiantes separados por grado y sección,
-estados de cuenta con abonos mensuales, carga desde Excel y **correos al encargado** (usted los escribe y los envía después de cada abono) y **recordatorios automáticos el día 1 de cada mes**. También se puede instalar como app en el celular o la computadora.
+Sistema web con cuentas de usuario (cédula y contraseña), estudiantes separados por grado y sección, estados de cuenta con abonos mensuales, carga desde Excel y correos al encargado. En Render utiliza PostgreSQL (Supabase) para conservar los datos aunque el servicio se reinicie. También puede ejecutarse localmente con archivo JSON.
 
 ## 1. Requisitos
 - Una computadora o servidor con **Node.js 18 o más nuevo** (https://nodejs.org).
@@ -45,9 +44,7 @@ Edite el archivo `.env`:
 Necesita un lugar donde el servidor esté encendido siempre:
 - Un servidor propio o de la institución, o un servicio en la nube que ejecute Node.js
   (por ejemplo Render, Railway o Fly.io). Comando de inicio: `npm start`.
-- **MUY IMPORTANTE – guardado de datos:** el sistema guarda todo en la carpeta `data`. En muchos servicios
-  en la nube el disco normal **se borra al reiniciar**. Use un **disco o volumen persistente** y apunte
-  `DATA_DIR` a esa ruta. Sin eso, perderá los datos.
+- **Guardado de datos:** en Render configure `DATABASE_URL` con la URI PostgreSQL de Supabase (preferiblemente Session Pooler). El servidor crea automáticamente la tabla `public.app_state` y guarda allí los datos. No necesita contratar un disco de Render. Si `DATABASE_URL` falta en producción, el servidor no arranca para evitar guardar datos en almacenamiento temporal.
 - Use **https** (los servicios en la nube lo dan) y ponga `COOKIE_SECURE=true`.
 - Ponga su cédula en `ADMIN_CEDULA` para que solo usted pueda crear la primera cuenta de administrador.
 - Configure las variables del archivo `.env` en el panel del servicio (no suba el archivo `.env` a ningún sitio público).
@@ -63,8 +60,7 @@ El plano incluye un **disco persistente** (por eso usa un plan de pago de Render
 Sin disco persistente los datos se pierden al reiniciar.
 
 ## 6. Respaldos y seguridad
-- El sistema copia la base de datos cada día a `data/backups` (guarda los últimos 30 días).
-  Copie esa carpeta a otro lugar con regularidad. Además, descargue el Excel con frecuencia.
+- En producción los datos están en PostgreSQL/Supabase. Configure y revise los respaldos disponibles en su plan de Supabase y descargue el Excel con frecuencia. En ejecución local con JSON, el sistema conserva copias en `data/backups`.
 - Las contraseñas se guardan cifradas. Se bloquean los intentos repetidos de entrada.
 - Son datos de menores y de sus familias: use https, limite quién es administrador y consulte la
   normativa de protección de datos que aplique a su institución.
@@ -74,8 +70,7 @@ Abra la dirección en Chrome (Android o computadora) y elija **Instalar** o **Ag
 En iPhone: Safari → Compartir → **Agregar a pantalla de inicio**. Requiere que el sistema esté en https.
 
 ## 8. Límites conocidos
-- Los datos se guardan en un archivo JSON: ideal para un colegio (hasta unos pocos miles de estudiantes).
-  Si necesita más, conviene pasar a una base de datos.
+- En Render, los datos se guardan en una fila JSONB de PostgreSQL; localmente, en un archivo JSON.
 - Si dos personas editan el mismo estudiante al mismo tiempo, prevalece el último guardado.
 - Si olvida la contraseña del único administrador, hay que restaurar o editar el archivo `data/db.json`.
 
