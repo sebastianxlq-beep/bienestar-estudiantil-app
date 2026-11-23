@@ -12,6 +12,7 @@ try {
   });
 } catch (e) { /* sin .env */ }
 
+process.env.TZ = process.env.TZ || 'America/Costa_Rica';
 const PORT = +process.env.PORT || 3000;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const APPROVAL = (process.env.REQUIRE_APPROVAL || 'true').toLowerCase() !== 'false';
@@ -19,79 +20,22 @@ const INST = process.env.INSTITUCION || 'Departamento de Bienestar Estudiantil';
 const ADMIN_CEDULA = String(process.env.ADMIN_CEDULA || '').replace(/\D/g, '');
 const PUB = path.join(__dirname, 'public');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
-const USE_POSTGRES = !!process.env.DATABASE_URL;
-let pool = null;
-if (USE_POSTGRES) {
-  const { Pool } = require('pg');
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    // Render PostgreSQL accepts TLS; allow its managed certificate chain.
-    ssl: (process.env.DATABASE_SSL || 'true').toLowerCase() === 'false' ? false : { rejectUnauthorized: false },
-    max: 5,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000
-  });
-} else {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
+fs.mkdirSync(DATA_DIR, { recursive: true });
 
-/* ---------- Almacenamiento persistente ---------- */
+/* ---------- Base de datos (archivo JSON) ---------- */
 let db = { users: {}, students: {} };
+try { db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); }
+catch (e) {
+  if (e.code !== 'ENOENT') { console.error('No se pudo leer ' + DB_FILE + ': ' + e.message + '\nNo se inicia para no perder datos. Restaure un respaldo de la carpeta backups.'); process.exit(1); }
+}
+db.users = db.users || {}; db.students = db.students || {};
 let saveTimer = null;
-let writeChain = Promise.resolve();
-const today = () => new Date().toISOString().slice(0, 10);
-async function initStorage() {
-  if (USE_POSTGRES) {
-    await pool.query(`CREATE TABLE IF NOT EXISTS bienestar_app_state (
-      id SMALLINT PRIMARY KEY CHECK (id = 1),
-      data JSONB NOT NULL,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`);
-    const result = await pool.query('SELECT data FROM bienestar_app_state WHERE id = 1');
-    if (result.rowCount) {
-      db = result.rows[0].data || { users: {}, students: {} };
-    } else {
-      // First initialization: import an existing local JSON file if one exists.
-      try { db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); }
-      catch (e) { if (e.code !== 'ENOENT') throw e; }
-      db.users = db.users || {}; db.students = db.students || {};
-      await pool.query('INSERT INTO bienestar_app_state (id, data) VALUES (1, $1::jsonb) ON CONFLICT (id) DO NOTHING', [JSON.stringify(db)]);
-      const verify = await pool.query('SELECT data FROM bienestar_app_state WHERE id = 1');
-      db = verify.rows[0].data || db;
-    }
-    db.users = db.users || {}; db.students = db.students || {};
-    console.log('Almacenamiento persistente: PostgreSQL.');
-  } else {
-    try { db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); }
-    catch (e) {
-      if (e.code !== 'ENOENT') throw new Error('No se pudo leer ' + DB_FILE + ': ' + e.message + '. No se inicia para evitar pérdida de datos.');
-    }
-    db.users = db.users || {}; db.students = db.students || {};
-    backup();
-    console.log('ADVERTENCIA: usando archivo JSON local; no es adecuado para producción en un host efímero.');
-  }
-}
-async function flush() {
-  clearTimeout(saveTimer);
-  const snapshot = JSON.stringify(db);
-  if (USE_POSTGRES) {
-    // Serialize writes so an older snapshot cannot overwrite a newer one.
-    writeChain = writeChain.then(() => pool.query(
-      'INSERT INTO bienestar_app_state (id, data, updated_at) VALUES (1, $1::jsonb, NOW()) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()',
-      [snapshot]
-    ));
-    return writeChain;
-  }
-  const tmp = DB_FILE + '.tmp';
-  fs.writeFileSync(tmp, snapshot);
-  fs.renameSync(tmp, DB_FILE);
-}
-function persist() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { flush().catch(e => console.error('Error guardando datos:', e.message)); }, 300);
-}
+function flush() { clearTimeout(saveTimer); const tmp = DB_FILE + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(db)); fs.renameSync(tmp, DB_FILE); }
+function persist() { clearTimeout(saveTimer); saveTimer = setTimeout(flush, 300); }
+const pad2 = n => String(n).padStart(2, '0');
+const today = () => { const d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
+db.archives = db.archives || {}; db.resets = db.resets || {}; db.meta = db.meta || { inicio: today() };
 function backup() {
-  if (USE_POSTGRES) return; // PostgreSQL is stored separately; file backups are only for local mode.
   try {
     if (!fs.existsSync(DB_FILE)) return;
     const bd = path.join(DATA_DIR, 'backups'); fs.mkdirSync(bd, { recursive: true });
@@ -101,14 +45,8 @@ function backup() {
     all.slice(0, Math.max(0, all.length - 30)).forEach(x => fs.unlinkSync(path.join(bd, x)));
   } catch (e) { console.error('No se pudo respaldar:', e.message); }
 }
-if (!USE_POSTGRES) setInterval(() => { flush().catch(e => console.error('Error guardando datos:', e.message)); backup(); }, 6 * 3600e3).unref();
-async function shutdown() {
-  try { await flush(); } catch (e) { console.error('Error al guardar durante el cierre:', e.message); }
-  server.close(() => {});
-  if (pool) { try { await pool.end(); } catch (e) {} }
-  process.exit(0);
-}
-['SIGINT', 'SIGTERM'].forEach(s => process.on(s, shutdown));
+backup(); setInterval(() => { flush(); backup(); }, 6 * 3600e3).unref();
+['SIGINT', 'SIGTERM'].forEach(s => process.on(s, () => { try { flush(); } catch (e) { } process.exit(0); }));
 
 /* ---------- Utilidades ---------- */
 const bad = (m, c = 400) => Object.assign(new Error(m), { status: c });
@@ -128,9 +66,9 @@ function okPw(pw, u) {
   const a = Buffer.from(hashPw(pw, u.salt), 'hex'), b = Buffer.from(u.hash, 'hex');
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
-function newUser(id, pw, rol, grado, seccion, aprobado) {
+function newUser(id, pw, rol, grado, seccion, aprobado, correo) {
   const salt = crypto.randomBytes(16).toString('hex');
-  db.users[id] = { rol, salt, hash: hashPw(pw, salt), grado, seccion, aprobado, creado: today() };
+  db.users[id] = { rol, salt, hash: hashPw(pw, salt), grado, seccion, aprobado, correo: correo || '', creado: today() };
 }
 const sessions = new Map();
 setInterval(() => { const n = Date.now(); sessions.forEach((s, k) => { if (s.exp < n) sessions.delete(k); }); }, 600e3).unref();
@@ -150,7 +88,7 @@ function startSession(req, res, id) {
   res.setHeader('Set-Cookie', `sid=${t}; HttpOnly; SameSite=Lax; Path=/; Max-Age=43200${sec}`);
 }
 const fails = new Map();
-const tooMany = k => { const f = fails.get(k); return f && f.n >= 8 && Date.now() - f.t < 15 * 60e3; };
+const tooMany = (k, max = 8) => { const f = fails.get(k); return f && f.n >= max && Date.now() - f.t < 15 * 60e3; };
 const failed = k => { const f = fails.get(k); if (!f || Date.now() - f.t > 15 * 60e3) fails.set(k, { n: 1, t: Date.now() }); else { f.n++; f.t = Date.now(); } };
 
 /* ---------- Correo ---------- */
@@ -202,12 +140,52 @@ async function sendReceipt(s, m) {
   return { recibo: recibo(m), to: s.correo, ...r };
 }
 
+const baseUrl = req => (process.env.BASE_URL || process.env.RENDER_EXTERNAL_URL || (req ? ((req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http') + '://' + req.headers.host) : '')).replace(/\/$/, '');
+const pendCount = () => Object.values(db.users).filter(x => !x.aprobado).length;
+async function notifyAdmins(req, f) {
+  const text = `Hay una nueva solicitud de cuenta de profe guía que necesita aprobación:\n\n  Cédula: ${f.ced}\n  Correo: ${f.correo}\n  Grado y sección que guía: ${f.grado}-${f.seccion}\n\nPara aprobarla o rechazarla, ingrese al sistema y abra “Usuarios”:\n${baseUrl(req)}\n\nCon que un administrador la apruebe es suficiente.\n\n${INST}`;
+  for (const a of Object.values(db.users)) if (a.rol === 'admin' && a.aprobado && reMail.test(a.correo || '')) await sendMail(a.correo, 'Nueva solicitud de cuenta de profe guía', text);
+}
+function reminderText(list, encargado) {
+  const mes = MES[new Date().getMonth()];
+  const lineas = list.map(s => `  - ${s.nombre} (${s.grado}-${s.seccion}): saldo pendiente ${fmt(totals(s).s)}`).join('\n');
+  return `Estimado(a) ${encargado}:\n\nLe recordamos que ${list.length > 1 ? 'los siguientes estudiantes tienen' : 'el siguiente estudiante tiene'} un saldo pendiente en ${mes}:\n\n${lineas}\n\nAgradecemos realizar su abono mensual a la mayor brevedad. Si ya lo realizó, por favor ignore este mensaje.\n\n${INST}`;
+}
+let remindBusy = false;
+async function runReminders() {
+  if (remindBusy) return null;
+  remindBusy = true;
+  try {
+    const todos = Object.values(db.students).filter(s => totals(s).s > 0.004), groups = new Map();
+    let sinCorreo = 0;
+    todos.forEach(s => { if (!reMail.test(s.correo)) { sinCorreo++; return; } if (!groups.has(s.correo)) groups.set(s.correo, []); groups.get(s.correo).push(s); });
+    let enviados = 0, fallidos = 0;
+    for (const [correo, list] of groups) {
+      const r = await sendMail(correo, `Recordatorio de pago – ${INST}`, reminderText(list, list[0].encargado));
+      if (r.sent) enviados++; else fallidos++;
+      await new Promise(ok => setTimeout(ok, 300));
+    }
+    db.meta.recordatorio = { fecha: today(), enviados, fallidos, sinCorreo };
+    persist();
+    return db.meta.recordatorio;
+  } finally { remindBusy = false; }
+}
+function checkReminders() {
+  if ((process.env.RECORDATORIO_MENSUAL || 'true').toLowerCase() === 'false' || !transporter) return;
+  const d = new Date(), ym = today().slice(0, 7);
+  if (d.getDate() !== (+process.env.REMINDER_DAY || 1) || d.getHours() < (process.env.REMINDER_HOUR === undefined ? 8 : +process.env.REMINDER_HOUR)) return;
+  if (db.meta.recordatorioAuto === ym) return;
+  db.meta.recordatorioAuto = ym; persist();
+  runReminders().catch(e => console.error('Recordatorios:', e.message));
+}
+setTimeout(checkReminders, 15000); setInterval(checkReminders, 15 * 60e3).unref();
+
 /* ---------- Estudiantes ---------- */
 const inScope = (u, s) => u.rol === 'admin' || (s.grado === u.grado && s.seccion === u.seccion);
 function cleanStudent(b) {
   const s = {
     nombre: str(b.nombre, 120), cedula: String(b.cedula == null ? '' : b.cedula).replace(/\D/g, ''), encargado: str(b.encargado, 120),
-    correo: str(b.correo, 120).toLowerCase(), telefono: str(b.telefono, 30), grado: +b.grado, seccion: +b.seccion, movs: []
+    correo: str(b.correo, 120).toLowerCase(), telefono: str(b.telefono, 30), carnet: String(b.carnet == null ? '' : b.carnet).trim().slice(0, 40), grado: +b.grado, seccion: +b.seccion, movs: []
   };
   if (!s.nombre) throw bad('Falta el nombre del estudiante.');
   if (!reCed.test(s.cedula)) throw bad('La cédula del estudiante debe tener de 9 a 12 dígitos.');
@@ -233,17 +211,14 @@ async function putStudent(u, id, body) {
   if (old && !inScope(u, old)) throw bad('No tiene permiso sobre este estudiante.', 403);
   if (!inScope(u, n)) throw bad('Solo puede trabajar con su propia sección.', 403);
   for (const k in db.students) if (k !== id && db.students[k].cedula === n.cedula) throw bad('Ya existe un estudiante con esa cédula.', 409);
+  for (const k in db.students) if (k !== id && n.carnet && db.students[k].carnet === n.carnet) throw bad('Ya existe un estudiante con ese carnet.', 409);
   if (old && u.rol !== 'admin') {
     const nm = new Map(n.movs.map(m => [m.id, JSON.stringify(m)]));
     if (old.movs.some(m => nm.get(m.id) !== JSON.stringify(m))) throw bad('Solo un administrador puede modificar o eliminar movimientos.', 403);
   }
-  const prev = new Set((old ? old.movs : []).map(m => m.id));
-  const nuevos = n.movs.filter(m => m.tipo === 'pago' && !prev.has(m.id));
   db.students[id] = { ...n, creado: old ? old.creado : today() };
   persist();
-  const emails = [];
-  for (const m of nuevos) emails.push(await sendReceipt(db.students[id], m));
-  return { ok: true, emails };
+  return { ok: true };
 }
 function studentFor(u, id) {
   const s = db.students[id];
@@ -266,12 +241,14 @@ const validUserFields = (b, rol) => {
   if (!reCed.test(ced)) throw bad('La cédula debe tener de 9 a 12 dígitos.');
   if (pw.length < 6 || pw.length > 100) throw bad('La contraseña debe tener al menos 6 caracteres.');
   if (db.users[ced]) throw bad('Ya existe una cuenta con esa cédula.', 409);
+  const correo = str(b.correo, 120).toLowerCase();
+  if (!reMail.test(correo)) throw bad('Escriba un correo electrónico válido (sirve para recuperar la contraseña).');
   let grado = 0, seccion = 0;
   if (rol === 'profe') {
     grado = +b.grado; seccion = +b.seccion;
     if (!(grado >= 7 && grado <= 12 && seccion >= 1 && seccion <= 4)) throw bad('Elija un grado y una sección válidos.');
   }
-  return { ced, pw, grado, seccion };
+  return { ced, pw, grado, seccion, correo };
 };
 const hayAdmin = () => Object.values(db.users).some(u => u.rol === 'admin');
 
@@ -292,10 +269,10 @@ async function api(req, res, p) {
       if (ADMIN_CEDULA && String(b.cedula || '').replace(/\D/g, '') !== ADMIN_CEDULA) throw bad('Esa cédula no está autorizada para crear la cuenta de administrador.', 403);
     }
     const f = validUserFields(b, rol), aprobado = rol === 'admin' || !APPROVAL;
-    newUser(f.ced, f.pw, rol, f.grado, f.seccion, aprobado); persist();
-    if (!aprobado) return json(res, 201, { ok: true, pendiente: true });
+    newUser(f.ced, f.pw, rol, f.grado, f.seccion, aprobado, f.correo); persist();
+    if (!aprobado) { notifyAdmins(req, f).catch(e => console.error('Aviso a administradores:', e.message)); return json(res, 201, { ok: true, pendiente: true }); }
     startSession(req, res, f.ced);
-    return json(res, 200, { ok: true, user: pub({ id: f.ced, ...db.users[f.ced] }) });
+    return json(res, 200, { ok: true, user: pub({ id: f.ced, ...db.users[f.ced] }), inicio: db.meta.inicio });
   }
   if (p === '/api/login' && m === 'POST') {
     const ced = String(b.cedula || '').replace(/\D/g, ''), pw = String(b.password || ''), k = clientIp(req) + ':' + ced;
@@ -305,7 +282,7 @@ async function api(req, res, p) {
     if (b.rol && u.rol !== b.rol) throw bad('Esa cuenta es de ' + (u.rol === 'admin' ? 'administrador' : 'profe guía') + '. Cambie la opción de arriba.', 403);
     if (!u.aprobado) throw bad('Su cuenta todavía no ha sido aprobada por un administrador.', 403);
     fails.delete(k); startSession(req, res, ced);
-    return json(res, 200, { user: pub({ id: ced, ...u }) });
+    return json(res, 200, { user: pub({ id: ced, ...u }), inicio: db.meta.inicio });
   }
   if (p === '/api/logout' && m === 'POST') {
     const t = cookies(req).sid; if (t) sessions.delete(t);
@@ -313,12 +290,40 @@ async function api(req, res, p) {
     return json(res, 200, { ok: true });
   }
 
+  if (p === '/api/forgot' && m === 'POST') {
+    const ced = String(b.cedula || '').replace(/\D/g, ''), k = 'f:' + clientIp(req) + ':' + ced;
+    if (!transporter) throw bad('El envío de correos no está configurado. Pida a un administrador que le cambie la contraseña.', 503);
+    if (tooMany(k, 3)) throw bad('Ya se solicitó un enlace hace poco. Revise su correo o espere 15 minutos.', 429);
+    failed(k);
+    const x = db.users[ced];
+    if (x && x.correo) {
+      const token = crypto.randomBytes(32).toString('hex'), h = crypto.createHash('sha256').update(token).digest('hex');
+      Object.keys(db.resets).forEach(t => { if (db.resets[t].id === ced || db.resets[t].exp < Date.now()) delete db.resets[t]; });
+      db.resets[h] = { id: ced, exp: Date.now() + 3600e3 };
+      persist();
+      sendMail(x.correo, 'Cambiar su contraseña', `Recibimos una solicitud para cambiar la contraseña de la cuenta con cédula ${ced}.\n\nPara elegir una contraseña nueva, abra este enlace (vence en 1 hora):\n${baseUrl(req)}/#reset=${token}\n\nSi usted no lo solicitó, ignore este mensaje: su contraseña no cambia.\n\n${INST}`).catch(() => { });
+    }
+    return json(res, 200, { ok: true, mensaje: 'Si la cédula tiene una cuenta con correo registrado, enviamos un enlace para cambiar la contraseña. Vence en 1 hora.' });
+  }
+  if (p === '/api/reset-password' && m === 'POST') {
+    const pw = String(b.password || ''), h = crypto.createHash('sha256').update(String(b.token || '')).digest('hex'), t = db.resets[h];
+    if (!t || t.exp < Date.now() || !db.users[t.id]) throw bad('El enlace no es válido o ya venció. Solicite uno nuevo.');
+    if (pw.length < 6 || pw.length > 100) throw bad('La contraseña debe tener al menos 6 caracteres.');
+    const x = db.users[t.id]; x.salt = crypto.randomBytes(16).toString('hex'); x.hash = hashPw(pw, x.salt);
+    sessions.forEach((sv, key) => { if (sv.id === t.id) sessions.delete(key); });
+    delete db.resets[h]; persist();
+    return json(res, 200, { ok: true });
+  }
+
   const u = userOf(req);
   if (!u) throw bad('Inicie sesión para continuar.', 401);
-  if (p === '/api/me' && m === 'GET') return json(res, 200, { user: pub(u), correoAutomatico: !!transporter });
+  if (p === '/api/me' && m === 'GET') {
+    const adm = u.rol === 'admin';
+    return json(res, 200, { user: pub(u), correoAutomatico: !!transporter, inicio: db.meta.inicio, pendientes: adm ? pendCount() : 0, recordatorio: adm ? (db.meta.recordatorio || null) : null, enviando: remindBusy });
+  }
 
   let r;
-  if ((r = p.match(/^\/api\/students(?:\/([A-Za-z0-9]+))?(?:\/(receipt|statement))?$/))) {
+  if ((r = p.match(/^\/api\/students(?:\/([A-Za-z0-9]+))?(?:\/(draft|email))?$/))) {
     const id = r[1], sub = r[2];
     if (!id && m === 'GET') {
       const list = Object.entries(db.students).filter(([, s]) => inScope(u, s)).map(([k, s]) => ({ id: k, ...s }));
@@ -329,19 +334,61 @@ async function api(req, res, p) {
       if (u.rol !== 'admin') throw bad('Solo un administrador puede eliminar estudiantes.', 403);
       delete db.students[id]; persist(); return json(res, 200, { ok: true });
     }
-    if (id && sub === 'receipt' && m === 'POST') {
-      const s = studentFor(u, id), mv = s.movs.find(x => x.id === b.movId && x.tipo === 'pago');
-      if (!mv) throw bad('Pago no encontrado.', 404);
-      return json(res, 200, await sendReceipt(s, mv));
+    if (id && sub === 'draft' && m === 'GET') {
+      const st = studentFor(u, id), q = new URL(req.url, 'http://x').searchParams, kind = q.get('kind');
+      if (kind === 'receipt') {
+        const mv = st.movs.find(x => x.id === q.get('movId') && x.tipo === 'pago');
+        if (!mv) throw bad('Pago no encontrado.', 404);
+        return json(res, 200, { to: st.correo, subject: `Confirmación de pago – ${st.nombre} (${st.grado}-${st.seccion})`, text: receiptText(st, mv) });
+      }
+      if (kind === 'statement') return json(res, 200, { to: st.correo, subject: `Estado de cuenta – ${st.nombre} (${st.grado}-${st.seccion})`, text: statementText(st) });
+      if (kind === 'reminder') {
+        if (!(totals(st).s > 0.004)) throw bad('Este estudiante no tiene saldo pendiente.');
+        return json(res, 200, { to: st.correo, subject: `Recordatorio de pago – ${INST}`, text: reminderText([st], st.encargado) });
+      }
+      throw bad('Tipo de correo no válido.');
     }
-    if (id && sub === 'statement' && m === 'POST') {
-      const s = studentFor(u, id);
-      return json(res, 200, { to: s.correo, ...(await sendMail(s.correo, `Estado de cuenta – ${s.nombre} (${s.grado}-${s.seccion})`, statementText(s))) });
+    if (id && sub === 'email' && m === 'POST') {
+      const st = studentFor(u, id), subject = str(b.subject, 150), text = str(b.text, 6000);
+      if (!subject || !text) throw bad('Escriba el asunto y el mensaje.');
+      return json(res, 200, { to: st.correo, ...(await sendMail(st.correo, subject, text)) });
     }
   }
 
   if (u.rol !== 'admin') throw bad('Solo un administrador puede hacer esto.', 403);
 
+  if (p === '/api/year' && m === 'GET') {
+    const archives = Object.values(db.archives).map(a => {
+      let c = 0, ab = 0; Object.values(a.students).forEach(x => { const t = totals(x); c += t.c; ab += t.p; });
+      return { id: a.id, nombre: a.nombre, inicio: a.inicio, fin: a.fin, estudiantes: Object.keys(a.students).length, cargos: c, abonos: ab };
+    }).sort((x, y) => y.fin.localeCompare(x.fin) || y.id.localeCompare(x.id));
+    return json(res, 200, { inicio: db.meta.inicio, archives });
+  }
+  if (p === '/api/year/finish' && m === 'POST') {
+    const nombre = str(b.nombre, 60);
+    if (!nombre) throw bad('Escriba el nombre del año que se va a guardar.');
+    if (b.confirm !== 'FINALIZAR') throw bad('Falta la confirmación.');
+    if (b.mode !== 'all' && b.mode !== 'movs') throw bad('Opción no válida.');
+    if (Object.values(db.archives).some(a => a.nombre.toLowerCase() === nombre.toLowerCase())) throw bad('Ya existe un año guardado con ese nombre. Use otro nombre.', 409);
+    flush(); backup();
+    const id = uid() + uid();
+    db.archives[id] = { id, nombre, inicio: db.meta.inicio, fin: today(), por: u.id, students: JSON.parse(JSON.stringify(db.students)) };
+    if (b.mode === 'all') db.students = {}; else Object.values(db.students).forEach(x => { x.movs = []; });
+    db.meta.inicio = today();
+    flush();
+    return json(res, 200, { ok: true, id, inicio: db.meta.inicio });
+  }
+  if ((r = p.match(/^\/api\/archives\/([A-Za-z0-9]+)$/)) && m === 'GET') {
+    const a = db.archives[r[1]]; if (!a) throw bad('Año guardado no encontrado.', 404);
+    return json(res, 200, { id: a.id, nombre: a.nombre, inicio: a.inicio, fin: a.fin, students: Object.entries(a.students).map(([k, x]) => ({ id: k, ...x })) });
+  }
+
+  if (p === '/api/reminders/run' && m === 'POST') {
+    if (!transporter) throw bad('El correo no está configurado en el servidor.', 503);
+    if (remindBusy) throw bad('Ya se están enviando recordatorios. Espere un momento.', 409);
+    runReminders().catch(e => console.error('Recordatorios:', e.message));
+    return json(res, 200, { ok: true });
+  }
   if (p === '/api/reset' && m === 'POST') {
     if (b.confirm !== 'BORRAR') throw bad('Falta la confirmación.');
     if (b.mode === 'all') db.students = {};
@@ -352,16 +399,20 @@ async function api(req, res, p) {
   if ((r = p.match(/^\/api\/users(?:\/(\d+))?$/))) {
     const id = r[1];
     if (!id && m === 'GET') {
-      const list = Object.entries(db.users).map(([k, x]) => ({ id: k, rol: x.rol, grado: x.grado, seccion: x.seccion, aprobado: !!x.aprobado, creado: x.creado }));
+      const list = Object.entries(db.users).map(([k, x]) => ({ id: k, rol: x.rol, grado: x.grado, seccion: x.seccion, aprobado: !!x.aprobado, correo: x.correo || '', creado: x.creado }));
       return json(res, 200, { users: list.sort((a, c) => (a.aprobado - c.aprobado) || a.id.localeCompare(c.id)) });
     }
     if (!id && m === 'POST') {
       const rol = b.rol === 'admin' ? 'admin' : 'profe', f = validUserFields(b, rol);
-      newUser(f.ced, f.pw, rol, f.grado, f.seccion, true); persist(); return json(res, 200, { ok: true });
+      newUser(f.ced, f.pw, rol, f.grado, f.seccion, true, f.correo); db.users[f.ced].aprobadoPor = u.id; persist(); return json(res, 200, { ok: true });
     }
     if (id && m === 'PATCH') {
       const x = db.users[id]; if (!x) throw bad('Usuario no encontrado.', 404);
-      if (typeof b.aprobado === 'boolean') { if (id === u.id && !b.aprobado) throw bad('No puede desactivar su propia cuenta.'); x.aprobado = b.aprobado; }
+      if (typeof b.aprobado === 'boolean') {
+        if (id === u.id && !b.aprobado) throw bad('No puede desactivar su propia cuenta.');
+        const antes = x.aprobado; x.aprobado = b.aprobado;
+        if (b.aprobado && !antes) { x.aprobadoPor = u.id; if (x.correo) sendMail(x.correo, 'Su cuenta fue aprobada', `Su cuenta de ${x.rol === 'admin' ? 'administrador' : 'profe guía'} (cédula ${id}) fue aprobada. Ya puede entrar al sistema:\n${baseUrl(req)}\n\n${INST}`).catch(() => { }); }
+      }
       if (b.password != null) {
         const pw = String(b.password); if (pw.length < 6 || pw.length > 100) throw bad('La contraseña debe tener al menos 6 caracteres.');
         x.salt = crypto.randomBytes(16).toString('hex'); x.hash = hashPw(pw, x.salt);
@@ -396,6 +447,7 @@ function serveStatic(res, p) {
 const server = http.createServer(async (req, res) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Permissions-Policy', 'camera=(self)');
   res.setHeader('Referrer-Policy', 'same-origin');
   res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'");
   try {
@@ -408,13 +460,7 @@ const server = http.createServer(async (req, res) => {
     console.error(e); json(res, 500, { error: 'Error interno del servidor.' });
   }
 });
-initStorage().then(() => {
-  server.listen(PORT, process.env.HOST || '0.0.0.0', () => {
-    console.log(`Bienestar estudiantil listo en http://localhost:${PORT}`);
-    if (!hayAdmin()) console.log('Aún no hay administrador: abra la página y cree la primera cuenta (opción “Administrador”).');
-  });
-}).catch(async e => {
-  console.error('No se pudo inicializar el almacenamiento. El servidor no se inicia para evitar pérdida de datos:', e.message);
-  if (pool) { try { await pool.end(); } catch (_) {} }
-  process.exit(1);
+server.listen(PORT, process.env.HOST || '0.0.0.0', () => {
+  console.log(`Bienestar estudiantil listo en http://localhost:${PORT}`);
+  if (!hayAdmin()) console.log('Aún no hay administrador: abra la página y cree la primera cuenta (opción “Administrador”).');
 });
